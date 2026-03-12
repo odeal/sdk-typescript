@@ -58,7 +58,9 @@ jobs:
       run: |
         npm pack
         
-        mv artifacts/*.tgz $PKG
+        mkdir artifacts
+        
+        mv *.tgz $PKG
         
         find . -name "package-lock.json" -type f -exec cp {} artifacts/ \;
         
