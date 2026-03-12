@@ -40,7 +40,7 @@ export type ConfigMap = Record<string, string>;
  */
 export abstract class BaseResource {
   protected readonly config: OdealConfig;
-  private readonly AGENT = "OdealSdkTypeScriptClient/2.1.40";
+  private readonly AGENT = "OdealSdkTypeScriptClient/2.1.41";
 
   constructor(config: OdealConfig) {
     this.config = { ...defaultConfig, ...config };
