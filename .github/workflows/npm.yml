@@ -1,0 +1,175 @@
+name: npm
+
+on:
+  push:
+    # branches: [ main ]
+    tags: [ '*.*.*' ]
+
+permissions:
+  contents:     read
+  id-token:     write
+  attestations: write
+  packages:     write
+
+jobs:
+  Publish:
+    runs-on: ubuntu-latest
+
+    env:
+      PKG: artifacts/package.tgz
+
+    steps:
+
+# CHECKOUT
+
+    - name: Checkout
+      uses: actions/checkout@v6
+
+# INSTALL TOOLS
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20.x'
+        registry-url: 'https://registry.npmjs.org'
+
+    - name: Install cosign
+      uses: sigstore/cosign-installer@v3
+
+    - name: Install Syft
+      run: |
+        curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | \
+          sh -s -- -b /usr/local/bin
+
+    - name: Install grype
+      run: |
+        curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | \
+          sh -s -- -b /usr/local/bin
+
+# BUILD
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Build
+      run: npm run build
+
+    - name: Pack NPM
+      run: |
+        npm pack --pack-destination artifacts
+        
+        mv artifacts/*.tgz $PKG
+        
+        find . -name "package-lock.json" -type f -exec cp {} artifacts/ \;
+        
+        ls -lah artifacts
+
+# SIGN ARTIFACT
+
+    - name: Sign package
+      run: |
+        cosign sign-blob \
+          --yes \
+          --bundle artifacts/sign.bundle.json \
+          "$PKG"
+
+# VERIFY SIGNATURE
+
+    - name: Verify package signature
+      run: |
+        cosign verify-blob \
+          --bundle artifacts/sign.bundle.json \
+          --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.github/workflows/npm\.yml@refs/(heads/main|tags/v?[0-9]+\.[0-9]+\.[0-9]+)$" \
+          --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+          "$PKG"
+
+# SBOM
+
+    - name: Generate SBOM
+      run: |
+        syft dir:. -o cyclonedx-json > artifacts/sbom.json
+        
+# SBOM ATTESTATION
+
+    - name: Attest SBOM
+      env:
+        COSIGN_YES: "true"
+      run: |
+        cosign attest-blob \
+          --yes \
+          --bundle artifacts/sbom.bundle.json \
+          --predicate artifacts/sbom.json \
+          --type cyclonedx \
+          "$PKG"
+
+# VERIFY SBOM
+
+    - name: Verify SBOM attestation
+      run: |
+        cosign verify-blob-attestation \
+          --bundle artifacts/sbom.bundle.json \
+          --type cyclonedx \
+          --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.github/workflows/npm\.yml@refs/(heads/main|tags/v?[0-9]+\.[0-9]+\.[0-9]+)$" \
+          --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+          "$PKG"
+
+# VULN SCAN
+
+    - name: Scan vulnerabilities
+      run: |
+        grype --version
+        
+        grype sbom:artifacts/sbom.json # -f high
+        
+        grype sbom:artifacts/sbom.json -o cyclonedx-json > artifacts/vuln.json
+
+# VULN ATTESTATION
+
+    - name: Attest vulnerabilities
+      run: |
+        cosign attest-blob \
+          --yes \
+          --bundle artifacts/vuln.bundle.json \
+          --predicate artifacts/vuln.json \
+          --type vuln \
+          "$PKG"
+
+# VERIFY VULN
+
+    - name: Verify vulnerability attestation
+      run: |
+        cosign verify-blob-attestation \
+          --bundle artifacts/vuln.bundle.json \
+          --type vuln \
+          --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.github/workflows/npm\.yml@refs/(heads/main|tags/v?[0-9]+\.[0-9]+\.[0-9]+)$" \
+          --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+          "$PKG"
+
+# PROVENANCE
+
+    # - name: Generate provenance
+    #   uses: actions/attest-build-provenance@v4
+    #   with:
+    #     subject-path: artifacts #/package.nupkg
+
+# ARTIFACT UPLOAD
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      # if: always()
+      with:
+        name: npm-package
+        path: |
+          artifacts/*.tgz
+          artifacts/*.json
+
+# PUBLISH
+
+    - name: Add GitHub NPM registry
+      run: |
+        echo 'registry=https://registry.npmjs.org/'                         >  ~/.npmrc
+        echo '//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}' >> ~/.npmrc
+
+    - name: Publish NPM Package
+      run: |
+        npm publish $PKG --registry https://npm.pkg.github.com/${{ github.repository_owner }}/
