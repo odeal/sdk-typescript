@@ -121,7 +121,7 @@ jobs:
       run: |
         grype --version
         
-        grype sbom:artifacts/sbom.json # -f high
+        grype sbom:artifacts/sbom.json -f high
         
         grype sbom:artifacts/sbom.json -o cyclonedx-json > artifacts/vuln.json
 
