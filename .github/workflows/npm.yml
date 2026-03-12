@@ -169,8 +169,9 @@ jobs:
 
     - name: Add GitHub NPM registry
       run: |
-        echo 'registry=https://registry.npmjs.org/'                         >  ~/.npmrc
-        echo '//npm.pkg.github.com/${{ github.repository_owner }}/:_authToken=${{ secrets.GITHUB_TOKEN }}' >> ~/.npmrc
+        echo 'registry=https://registry.npmjs.org/'                         >  /home/runner/work/_temp/.npmrc
+        echo '//npm.pkg.github.com/${{ github.repository_owner }}/:_authToken=${{ secrets.GITHUB_TOKEN }}' >> /home/runner/work/_temp/.npmrc
+
 
     - name: Publish NPM Package
       run: |
