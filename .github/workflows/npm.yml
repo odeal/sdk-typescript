@@ -56,7 +56,7 @@ jobs:
 
     - name: Pack NPM
       run: |
-        npm pack --pack-destination artifacts
+        npm pack
         
         mv artifacts/*.tgz $PKG
         
