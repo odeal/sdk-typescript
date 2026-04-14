@@ -1,8 +1,8 @@
 
+
 /**
  * 
  */
-
 export interface Exemption {
     /**  */
     code?: string;

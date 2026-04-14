@@ -1,5 +1,5 @@
 /**
- * SepetSimpleResource - API resource sınıfı.
+ * UnitResource - API resource sınıfı.
  * 
  * @remarks
  * Bu dosya otomatik olarak üretilmiştir. Manuel değişiklik yapmayınız.
@@ -8,21 +8,19 @@
 import { BaseResource } from '../base-resource';
 import { OdealConfig } from '../odeal-config';
 import {
-    BasketRequest,
-    BasketResponse,
-    withBasketRequestMetadata,
+    Unit,
 } from '../models';
 
 /**
- * SepetSimple API işlemleri.
+ * Unit API işlemleri.
  * 
  * @remarks
  * BaseResource sınıfından türetilmiştir.
  * HTTP isteklerini ve validasyonu otomatik olarak yönetir.
  */
-export class SepetSimpleResource extends BaseResource {
+export class UnitResource extends BaseResource {
     /**
-     * SepetSimpleResource sınıfının yeni bir örneğini oluşturur.
+     * UnitResource sınıfının yeni bir örneğini oluşturur.
      * 
      * @param config - SDK yapılandırma ayarları
      */
@@ -31,19 +29,17 @@ export class SepetSimpleResource extends BaseResource {
     }
 
     /**
-     * Standart ürün satışı. Müşteri Bireysel veya Kurumsal olabilir. 'items' alanı zorunludur.
+     * Birimleri Listele
      *
-     * @param request - request parametresi.
      * @param options - API header parametreleri (opsiyonel, config'den otomatik doldurulur)
      * @param options.secretKey - Size özel olarak verilmiş gizli anahtar.
      * @param options.merchantKey - Size özel olarak verilmiş iş yeri anahtarı.
      * @param baseUrl - API sunucusunun adresi. (Opsiyonel)
-     * @returns BasketResponse tipinde API yanıtı
+     * @returns Unit[] tipinde API yanıtı
      * @throws OdealApiException - API isteği başarısız olduğunda
      * @throws OdealValidationException - Validation hatası oluştuğunda
      */
-    async createSimpleBasket(
-        request: BasketRequest,
+    async listUnits(
         options?: {
             /** Size özel olarak verilmiş gizli anahtar. */
             secretKey?: string;
@@ -51,8 +47,8 @@ export class SepetSimpleResource extends BaseResource {
             merchantKey?: string;
         },
         baseUrl?: string,
-    ): Promise<BasketResponse> {
-        const path = '/basket';
+    ): Promise<Unit[]> {
+        const path = '/unit';
 
         // Query parametreleri
         const queryParams: Record<string, string> = {};
@@ -79,14 +75,12 @@ export class SepetSimpleResource extends BaseResource {
                 headerParams['X-ODEAL-MERCHANT-KEY'] = String(val);
             }
         }
-        // Body'ye config ve validation metadata ekle
-        const bodyWithMetadata = withBasketRequestMetadata(request);
 
         // API çağrısı
-        return this.sendRequest<BasketResponse>(
-            'Post',
+        return this.sendRequest<Unit[]>(
+            'Get',
             path,
-            bodyWithMetadata,
+            undefined,
             Object.keys(queryParams).length > 0 ? queryParams : undefined,
             Object.keys(headerParams).length > 0 ? headerParams : undefined,
             baseUrl

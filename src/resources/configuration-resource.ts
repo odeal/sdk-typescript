@@ -1,5 +1,5 @@
 /**
- * SepetFoodCardResource - API resource sınıfı.
+ * ConfigurationResource - API resource sınıfı.
  * 
  * @remarks
  * Bu dosya otomatik olarak üretilmiştir. Manuel değişiklik yapmayınız.
@@ -8,21 +8,20 @@
 import { BaseResource } from '../base-resource';
 import { OdealConfig } from '../odeal-config';
 import {
-    BasketRequestFoodCard,
-    BasketResponse,
-    withBasketRequestFoodCardMetadata,
+    ConfigurationRequest,
+    withConfigurationRequestMetadata,
 } from '../models';
 
 /**
- * SepetFoodCard API işlemleri.
+ * Configuration API işlemleri.
  * 
  * @remarks
  * BaseResource sınıfından türetilmiştir.
  * HTTP isteklerini ve validasyonu otomatik olarak yönetir.
  */
-export class SepetFoodCardResource extends BaseResource {
+export class ConfigurationResource extends BaseResource {
     /**
-     * SepetFoodCardResource sınıfının yeni bir örneğini oluşturur.
+     * ConfigurationResource sınıfının yeni bir örneğini oluşturur.
      * 
      * @param config - SDK yapılandırma ayarları
      */
@@ -31,19 +30,19 @@ export class SepetFoodCardResource extends BaseResource {
     }
 
     /**
-     * Yemek kartı işlemleri. `receiptInfo` ve içindeki `foodCardBrandId` zorunludur.
+     * Konfigürasyon Kaydet
      *
      * @param request - request parametresi.
      * @param options - API header parametreleri (opsiyonel, config'den otomatik doldurulur)
      * @param options.secretKey - Size özel olarak verilmiş gizli anahtar.
      * @param options.merchantKey - Size özel olarak verilmiş iş yeri anahtarı.
      * @param baseUrl - API sunucusunun adresi. (Opsiyonel)
-     * @returns BasketResponse tipinde API yanıtı
+     * @returns Promise<void>
      * @throws OdealApiException - API isteği başarısız olduğunda
      * @throws OdealValidationException - Validation hatası oluştuğunda
      */
-    async createFoodCardBasket(
-        request: BasketRequestFoodCard,
+    async saveConfiguration(
+        request: ConfigurationRequest,
         options?: {
             /** Size özel olarak verilmiş gizli anahtar. */
             secretKey?: string;
@@ -51,8 +50,8 @@ export class SepetFoodCardResource extends BaseResource {
             merchantKey?: string;
         },
         baseUrl?: string,
-    ): Promise<BasketResponse> {
-        const path = '/basket/foodCard';
+    ): Promise<void> {
+        const path = '/configuration';
 
         // Query parametreleri
         const queryParams: Record<string, string> = {};
@@ -80,10 +79,10 @@ export class SepetFoodCardResource extends BaseResource {
             }
         }
         // Body'ye config ve validation metadata ekle
-        const bodyWithMetadata = withBasketRequestFoodCardMetadata(request);
+        const bodyWithMetadata = withConfigurationRequestMetadata(request);
 
         // API çağrısı
-        return this.sendRequest<BasketResponse>(
+        await this.sendRequest<void>(
             'Post',
             path,
             bodyWithMetadata,

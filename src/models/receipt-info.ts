@@ -1,9 +1,9 @@
 
+import { ReceiptInfoFoodCardBrandId } from '../enums/receipt-info-food-card-brand-id';
+
 /**
  * Fiş detayları. Tüm sepet tipleri için ortak yapıdır.
  */
-import { ReceiptInfoFoodCardBrandId, withReceiptInfoFoodCardBrandIdMetadata } from './receipt-info-food-card-brand-id';
-
 export interface ReceiptInfo {
     /** Koşullu. Eğer ödeme tipi 'FOOD_CARD' ise ZORUNLUDUR.
     /// - 100001: Multinet
@@ -58,9 +58,6 @@ export function createReceiptInfo(partial: Partial<ReceiptInfo> = {}): ReceiptIn
 export function withReceiptInfoMetadata<T extends ReceiptInfo>(obj: T): T & { __configMap?: Record<string, string>; __validationRules?: Record<string, unknown> } {
     const result = obj as any;
     result.__validationRules = ReceiptInfoValidationRules;
-    if (result.foodCardBrandId) {
-        result.foodCardBrandId = withReceiptInfoFoodCardBrandIdMetadata(result.foodCardBrandId);
-    }
     
     return result;
 }

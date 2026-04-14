@@ -1,8 +1,8 @@
 
+
 /**
  * 
  */
-
 export interface ProductPrice {
     /**  */
     grossPrice: number;

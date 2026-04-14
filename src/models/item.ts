@@ -1,9 +1,9 @@
 
+import { Product, withProductMetadata } from './product';
+
 /**
  * 
  */
-import { Product, withProductMetadata } from './product';
-
 export interface Item {
     /**  */
     quantity: number;

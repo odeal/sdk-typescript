@@ -1,8 +1,8 @@
 
+
 /**
  * 
  */
-
 export interface TransactionReport {
     /**  */
     basketReferenceCode?: string;

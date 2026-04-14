@@ -8,5 +8,8 @@ export { OdealApiException, OdealValidationException } from './exceptions';
 // Client
 export { OdealClient } from './odeal-client';
 
-// Models & Enums
+// Models
 export * from './models';
+
+// Enums
+export * from './enums';

@@ -1,9 +1,9 @@
 
+import { CustomerType } from '../enums/customer-type';
+
 /**
  * 
  */
-import { CustomerType, withCustomerTypeMetadata } from './customer-type';
-
 export interface Customer {
     /** Opsiyonel. Müşterinin kendi referans kodu. */
     referenceCode?: string;
@@ -109,9 +109,6 @@ export function createCustomer(partial: Partial<Customer> = {}): Customer & { __
 export function withCustomerMetadata<T extends Customer>(obj: T): T & { __configMap?: Record<string, string>; __validationRules?: Record<string, unknown> } {
     const result = obj as any;
     result.__validationRules = CustomerValidationRules;
-    if (result.type) {
-        result.type = withCustomerTypeMetadata(result.type);
-    }
     
     return result;
 }

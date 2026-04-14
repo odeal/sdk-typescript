@@ -1,8 +1,8 @@
 
+
 /**
  * 
  */
-
 export interface ConfigurationRequest {
     /**  */
     eCommerceUrl?: string;

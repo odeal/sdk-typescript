@@ -7,16 +7,11 @@
 
 import { OdealConfig, defaultConfig } from './odeal-config';
 import { OdealApiException, OdealValidationException } from './exceptions';
-import { SepetSimpleResource } from './resources/sepet-simple-resource';
-import { SepetAvansResource } from './resources/sepet-avans-resource';
-import { SepetCariResource } from './resources/sepet-cari-resource';
-import { SepetFoodCardResource } from './resources/sepet-food-card-resource';
-import { SepetListelemeResource } from './resources/sepet-listeleme-resource';
-import { SepetSilmeResource } from './resources/sepet-silme-resource';
-import { OdemeResource } from './resources/odeme-resource';
-import { KonfigurasyonResource } from './resources/konfigurasyon-resource';
-import { BirimlerResource } from './resources/birimler-resource';
-import { RaporlamaResource } from './resources/raporlama-resource';
+import { BasketResource } from './resources/basket-resource';
+import { PaymentResource } from './resources/payment-resource';
+import { ConfigurationResource } from './resources/configuration-resource';
+import { UnitResource } from './resources/unit-resource';
+import { ReportResource } from './resources/report-resource';
 import {
     BasketRequest,
     BasketResponse,
@@ -34,29 +29,19 @@ import {
  */
 export class OdealClient {
     private readonly config: OdealConfig;
-    private readonly _sepetSimple: SepetSimpleResource;
-    private readonly _sepetAvans: SepetAvansResource;
-    private readonly _sepetCari: SepetCariResource;
-    private readonly _sepetFoodCard: SepetFoodCardResource;
-    private readonly _sepetListeleme: SepetListelemeResource;
-    private readonly _sepetSilme: SepetSilmeResource;
-    private readonly _odeme: OdemeResource;
-    private readonly _konfigurasyon: KonfigurasyonResource;
-    private readonly _birimler: BirimlerResource;
-    private readonly _raporlama: RaporlamaResource;
+    private readonly _basket: BasketResource;
+    private readonly _payment: PaymentResource;
+    private readonly _configuration: ConfigurationResource;
+    private readonly _unit: UnitResource;
+    private readonly _report: ReportResource;
 
     constructor(config: Partial<OdealConfig> = {}) {
         this.config = { ...defaultConfig, ...config };
-        this._sepetSimple = new SepetSimpleResource(this.config);
-        this._sepetAvans = new SepetAvansResource(this.config);
-        this._sepetCari = new SepetCariResource(this.config);
-        this._sepetFoodCard = new SepetFoodCardResource(this.config);
-        this._sepetListeleme = new SepetListelemeResource(this.config);
-        this._sepetSilme = new SepetSilmeResource(this.config);
-        this._odeme = new OdemeResource(this.config);
-        this._konfigurasyon = new KonfigurasyonResource(this.config);
-        this._birimler = new BirimlerResource(this.config);
-        this._raporlama = new RaporlamaResource(this.config);
+        this._basket = new BasketResource(this.config);
+        this._payment = new PaymentResource(this.config);
+        this._configuration = new ConfigurationResource(this.config);
+        this._unit = new UnitResource(this.config);
+        this._report = new ReportResource(this.config);
     }
 
     /**
@@ -67,77 +52,42 @@ export class OdealClient {
     }
 
     /**
-     * SepetSimple resource'una erişim sağlar.
+     * Basket resource'una erişim sağlar.
      */
-    get sepetSimple(): SepetSimpleResource {
-        return this._sepetSimple;
+    get basket(): BasketResource {
+        return this._basket;
     }
 
     /**
-     * SepetAvans resource'una erişim sağlar.
+     * Payment resource'una erişim sağlar.
      */
-    get sepetAvans(): SepetAvansResource {
-        return this._sepetAvans;
+    get payment(): PaymentResource {
+        return this._payment;
     }
 
     /**
-     * SepetCari resource'una erişim sağlar.
+     * Configuration resource'una erişim sağlar.
      */
-    get sepetCari(): SepetCariResource {
-        return this._sepetCari;
+    get configuration(): ConfigurationResource {
+        return this._configuration;
     }
 
     /**
-     * SepetFoodCard resource'una erişim sağlar.
+     * Unit resource'una erişim sağlar.
      */
-    get sepetFoodCard(): SepetFoodCardResource {
-        return this._sepetFoodCard;
+    get unit(): UnitResource {
+        return this._unit;
     }
 
     /**
-     * SepetListeleme resource'una erişim sağlar.
+     * Report resource'una erişim sağlar.
      */
-    get sepetListeleme(): SepetListelemeResource {
-        return this._sepetListeleme;
-    }
-
-    /**
-     * SepetSilme resource'una erişim sağlar.
-     */
-    get sepetSilme(): SepetSilmeResource {
-        return this._sepetSilme;
-    }
-
-    /**
-     * Odeme resource'una erişim sağlar.
-     */
-    get odeme(): OdemeResource {
-        return this._odeme;
-    }
-
-    /**
-     * Konfigurasyon resource'una erişim sağlar.
-     */
-    get konfigurasyon(): KonfigurasyonResource {
-        return this._konfigurasyon;
-    }
-
-    /**
-     * Birimler resource'una erişim sağlar.
-     */
-    get birimler(): BirimlerResource {
-        return this._birimler;
-    }
-
-    /**
-     * Raporlama resource'una erişim sağlar.
-     */
-    get raporlama(): RaporlamaResource {
-        return this._raporlama;
+    get report(): ReportResource {
+        return this._report;
     }
 
     // ───────────────────────────────────────────────────────────────────────────
-    // SEPETSIMPLE
+    // BASKET
     // ───────────────────────────────────────────────────────────────────────────
 
     /**
@@ -151,12 +101,8 @@ export class OdealClient {
         },
         baseUrl?: string,
     ): Promise<BasketResponse> {
-        return this._sepetSimple.createSimpleBasket(request, options, baseUrl);
+        return this._basket.createSimpleBasket(request, options, baseUrl);
     }
-
-    // ───────────────────────────────────────────────────────────────────────────
-    // SEPETAVANS
-    // ───────────────────────────────────────────────────────────────────────────
 
     /**
      * Avans tahsilatı. Müşteri Bireysel veya Kurumsal olabilir. 'items' gönderilmez. `basketType` ADVANCE olmalıdır.
@@ -169,12 +115,8 @@ export class OdealClient {
         },
         baseUrl?: string,
     ): Promise<BasketResponse> {
-        return this._sepetAvans.createAdvanceBasket(request, options, baseUrl);
+        return this._basket.createAdvanceBasket(request, options, baseUrl);
     }
-
-    // ───────────────────────────────────────────────────────────────────────────
-    // SEPETCARI
-    // ───────────────────────────────────────────────────────────────────────────
 
     /**
      * Cari hesap tahsilatı. Müşteri Kurumsal olmalıdır. `basketType` CURRENT_ACCOUNT olmalıdır.
@@ -187,12 +129,8 @@ export class OdealClient {
         },
         baseUrl?: string,
     ): Promise<BasketResponse> {
-        return this._sepetCari.createCurrentAccountBasket(request, options, baseUrl);
+        return this._basket.createCurrentAccountBasket(request, options, baseUrl);
     }
-
-    // ───────────────────────────────────────────────────────────────────────────
-    // SEPETFOODCARD
-    // ───────────────────────────────────────────────────────────────────────────
 
     /**
      * Yemek kartı işlemleri. `receiptInfo` ve içindeki `foodCardBrandId` zorunludur.
@@ -205,12 +143,8 @@ export class OdealClient {
         },
         baseUrl?: string,
     ): Promise<BasketResponse> {
-        return this._sepetFoodCard.createFoodCardBasket(request, options, baseUrl);
+        return this._basket.createFoodCardBasket(request, options, baseUrl);
     }
-
-    // ───────────────────────────────────────────────────────────────────────────
-    // SEPETLISTELEME
-    // ───────────────────────────────────────────────────────────────────────────
 
     /**
      * Sepet Listele
@@ -223,12 +157,8 @@ export class OdealClient {
         },
         baseUrl?: string,
     ): Promise<BasketListResponse> {
-        return this._sepetListeleme.listBaskets(options, baseUrl);
+        return this._basket.listBaskets(options, baseUrl);
     }
-
-    // ───────────────────────────────────────────────────────────────────────────
-    // SEPETSILME
-    // ───────────────────────────────────────────────────────────────────────────
 
     /**
      * Sepet Sil
@@ -241,11 +171,11 @@ export class OdealClient {
         },
         baseUrl?: string,
     ): Promise<void> {
-        return this._sepetSilme.deleteBasket(referenceCode, options, baseUrl);
+        return this._basket.deleteBasket(referenceCode, options, baseUrl);
     }
 
     // ───────────────────────────────────────────────────────────────────────────
-    // ODEME
+    // PAYMENT
     // ───────────────────────────────────────────────────────────────────────────
 
     /**
@@ -259,11 +189,11 @@ export class OdealClient {
         },
         baseUrl?: string,
     ): Promise<any> {
-        return this._odeme.cancelPayment(request, options, baseUrl);
+        return this._payment.cancelPayment(request, options, baseUrl);
     }
 
     // ───────────────────────────────────────────────────────────────────────────
-    // KONFIGURASYON
+    // CONFIGURATION
     // ───────────────────────────────────────────────────────────────────────────
 
     /**
@@ -277,11 +207,11 @@ export class OdealClient {
         },
         baseUrl?: string,
     ): Promise<void> {
-        return this._konfigurasyon.saveConfiguration(request, options, baseUrl);
+        return this._configuration.saveConfiguration(request, options, baseUrl);
     }
 
     // ───────────────────────────────────────────────────────────────────────────
-    // BIRIMLER
+    // UNIT
     // ───────────────────────────────────────────────────────────────────────────
 
     /**
@@ -294,11 +224,11 @@ export class OdealClient {
         },
         baseUrl?: string,
     ): Promise<Unit[]> {
-        return this._birimler.listUnits(options, baseUrl);
+        return this._unit.listUnits(options, baseUrl);
     }
 
     // ───────────────────────────────────────────────────────────────────────────
-    // RAPORLAMA
+    // REPORT
     // ───────────────────────────────────────────────────────────────────────────
 
     /**
@@ -315,6 +245,6 @@ export class OdealClient {
         },
         baseUrl?: string,
     ): Promise<TransactionReport[]> {
-        return this._raporlama.getTransactionReport(beginDate, endDate, externalDeviceKey, basketReferenceCode, options, baseUrl);
+        return this._report.getTransactionReport(beginDate, endDate, externalDeviceKey, basketReferenceCode, options, baseUrl);
     }
 }

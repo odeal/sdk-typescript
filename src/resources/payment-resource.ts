@@ -1,5 +1,5 @@
 /**
- * SepetAvansResource - API resource sınıfı.
+ * PaymentResource - API resource sınıfı.
  * 
  * @remarks
  * Bu dosya otomatik olarak üretilmiştir. Manuel değişiklik yapmayınız.
@@ -7,22 +7,17 @@
 
 import { BaseResource } from '../base-resource';
 import { OdealConfig } from '../odeal-config';
-import {
-    BasketRequestAdvance,
-    BasketResponse,
-    withBasketRequestAdvanceMetadata,
-} from '../models';
 
 /**
- * SepetAvans API işlemleri.
+ * Payment API işlemleri.
  * 
  * @remarks
  * BaseResource sınıfından türetilmiştir.
  * HTTP isteklerini ve validasyonu otomatik olarak yönetir.
  */
-export class SepetAvansResource extends BaseResource {
+export class PaymentResource extends BaseResource {
     /**
-     * SepetAvansResource sınıfının yeni bir örneğini oluşturur.
+     * PaymentResource sınıfının yeni bir örneğini oluşturur.
      * 
      * @param config - SDK yapılandırma ayarları
      */
@@ -31,19 +26,19 @@ export class SepetAvansResource extends BaseResource {
     }
 
     /**
-     * Avans tahsilatı. Müşteri Bireysel veya Kurumsal olabilir. 'items' gönderilmez. `basketType` ADVANCE olmalıdır.
+     * Ödeme İptali
      *
      * @param request - request parametresi.
      * @param options - API header parametreleri (opsiyonel, config'den otomatik doldurulur)
      * @param options.secretKey - Size özel olarak verilmiş gizli anahtar.
      * @param options.merchantKey - Size özel olarak verilmiş iş yeri anahtarı.
      * @param baseUrl - API sunucusunun adresi. (Opsiyonel)
-     * @returns BasketResponse tipinde API yanıtı
+     * @returns any tipinde API yanıtı
      * @throws OdealApiException - API isteği başarısız olduğunda
      * @throws OdealValidationException - Validation hatası oluştuğunda
      */
-    async createAdvanceBasket(
-        request: BasketRequestAdvance,
+    async cancelPayment(
+        request: any,
         options?: {
             /** Size özel olarak verilmiş gizli anahtar. */
             secretKey?: string;
@@ -51,8 +46,8 @@ export class SepetAvansResource extends BaseResource {
             merchantKey?: string;
         },
         baseUrl?: string,
-    ): Promise<BasketResponse> {
-        const path = '/basket/advance';
+    ): Promise<any> {
+        const path = '/payment/cancel';
 
         // Query parametreleri
         const queryParams: Record<string, string> = {};
@@ -79,14 +74,12 @@ export class SepetAvansResource extends BaseResource {
                 headerParams['X-ODEAL-MERCHANT-KEY'] = String(val);
             }
         }
-        // Body'ye config ve validation metadata ekle
-        const bodyWithMetadata = withBasketRequestAdvanceMetadata(request);
 
         // API çağrısı
-        return this.sendRequest<BasketResponse>(
-            'Post',
+        return this.sendRequest<any>(
+            'Put',
             path,
-            bodyWithMetadata,
+            request,
             Object.keys(queryParams).length > 0 ? queryParams : undefined,
             Object.keys(headerParams).length > 0 ? headerParams : undefined,
             baseUrl

@@ -9,7 +9,7 @@
  * Tüm header'lar swagger.json'dan parse edilip Resource sınıflarında otomatik oluşturulur.
  */
 
-import { OdealConfig, defaultConfig } from './odeal-config';
+import { OdealConfig, OdealLogger, ConsoleOdealLogger, defaultConfig } from './odeal-config';
 import { OdealApiException, OdealValidationException } from './exceptions';
 
 /**
@@ -40,10 +40,12 @@ export type ConfigMap = Record<string, string>;
  */
 export abstract class BaseResource {
   protected readonly config: OdealConfig;
+  protected readonly log: OdealLogger;
   private readonly AGENT = "OdealSdkTypeScriptClient/2.2.10";
 
   constructor(config: OdealConfig) {
     this.config = { ...defaultConfig, ...config };
+    this.log = this.config.logger ?? new ConsoleOdealLogger();
   }
 
     /**
@@ -148,9 +150,14 @@ export abstract class BaseResource {
      *
      * @param message - Log mesajı
      */
-    protected debugLog(message: string): void {
-        if (this.config.debugMode) {
-            console.log(`[DEBUG] ${message}`);
+    protected debugLog(message: string, level: 'debug' | 'info' | 'warn' | 'error' = 'debug'): void {
+        if (this.config.debugMode || level === 'error' || level === 'warn') {
+            switch (level) {
+                case 'error': this.log.error(message); break;
+                case 'warn':  this.log.warn(message);  break;
+                case 'info':  this.log.info(message);  break;
+                default:      this.log.debug(message);  break;
+            }
         }
     }
 
@@ -198,12 +205,15 @@ export abstract class BaseResource {
         
         // Headers
         Object.entries(headers).forEach(([key, value]) => {
-            parts.push(`-H '${key}: ${value}'`);
+            let safeValue = value;
+            
+            parts.push(`-H '${key}: ${safeValue}'`);
         });
         
         // Body
         if (body) {
-            const bodyJson = JSON.stringify(body);
+            let bodyJson = JSON.stringify(body);
+            
             // Windows uyumlu escape
             const escapedBody = bodyJson.replace(/'/g, "'\\''");
             parts.push(`-d '${escapedBody}'`);
@@ -236,9 +246,6 @@ export abstract class BaseResource {
         headerParams?: Record<string, string>,
         overrideBaseUrl?: string
     ): Promise<T> {
-        // Dinamik axios import (ESM/CJS uyumlu)
-        const axios = await this.getAxios();
-
         // 1. Config defaults doldur (eğer body bir object ise)
         if (body && typeof body === 'object') {
             const bodyObj = body as Record<string, unknown>;
@@ -258,7 +265,7 @@ export abstract class BaseResource {
             if (validationRules) {
                 const errors = this.validateModel(bodyObj, validationRules);
                 if (errors.length > 0) {
-                    this.debugLog(`Validation Failed: ${errors.join(', ')}`);
+                    this.debugLog(`Validation Failed: ${errors.join(', ')}`, 'warn');
                     throw new OdealValidationException(
                         `Validation hatası: ${errors.join('; ')}`,
                         errors
@@ -305,72 +312,117 @@ export abstract class BaseResource {
         // Agent header'ını her zaman ez (Kullanıcı değiştiremesin)
         headers['X-ODEAL-AGENT'] = this.AGENT;
 
+        
+
         // 5. Body hazırla - internal property'leri temizle
         const requestBody = body ? this.cleanBody(body) : undefined;
 
         // Debug: curl komutu
         if (this.config.debugMode) {
-            console.log(`[DEBUG] ${this.buildCurlCommand(method, url, headers, requestBody)}`);
+            this.debugLog(this.buildCurlCommand(method, url, headers, requestBody), 'info');
         }
 
-        // 6. Axios request
-        try {
-            const response = await axios({
-                method: method.toUpperCase(),
-                url,
-                headers,
-                data: requestBody,
-                validateStatus: () => true, // Tüm status kodlarını kabul et
-            });
+        // 6. Native fetch with Retry Logic
+        let currentTry = 0;
+        const maxRetries = 0;
 
-            const responseData = response.data;
-            const responseText = typeof responseData === 'string' 
-                ? responseData 
-                : JSON.stringify(responseData);
+        while (true) {
+            try {
+                
 
-            if (response.status >= 400) {
-                this.debugLog(`HTTP Error ${response.status}: ${responseText}`);
-                throw new OdealApiException(
-                    `API isteği başarısız: ${response.statusText}`,
-                    response.status,
-                    responseText
-                );
-            }
+                const startTime = Date.now();
 
-            // Boş yanıt kontrolü
-            if (response.status === 204 || !responseData) {
-                this.debugLog(`Response [${response.status}]: (empty)`);
-                return undefined as T;
-            }
+                // Timeout with AbortController
+                const controller = new AbortController();
+                const timeoutMs = this.config.timeout ?? 30000;
+                const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-            this.debugLog(`Response [${response.status}]: ${responseText.substring(0, 500)}${responseText.length > 500 ? '...' : ''}`);
-            return responseData as T;
+                const fetchOptions: RequestInit = {
+                    method: method.toUpperCase(),
+                    headers,
+                    signal: controller.signal,
+                };
+                if (requestBody !== undefined && requestBody !== null) {
+                    fetchOptions.body = typeof requestBody === 'string' ? requestBody : JSON.stringify(requestBody);
+                }
 
-        } catch (error) {
-            if (error instanceof OdealApiException || error instanceof OdealValidationException) {
-                throw error;
-            }
-            
-            // Axios error handling
-            if (this.isAxiosError(error)) {
-                const axiosError = error as { response?: { status: number; data: unknown }; message: string };
-                if (axiosError.response) {
-                    const responseText = typeof axiosError.response.data === 'string'
-                        ? axiosError.response.data
-                        : JSON.stringify(axiosError.response.data);
+                const fetchResponse = await fetch(url, fetchOptions);
+                clearTimeout(timeoutId);
+
+                // Parse response body
+                const responseText = await fetchResponse.text();
+                let responseData: unknown;
+                try {
+                    responseData = JSON.parse(responseText);
+                } catch {
+                    responseData = responseText;
+                }
+
+                // Normalize response
+                const response = {
+                    status: fetchResponse.status,
+                    statusText: fetchResponse.statusText,
+                    data: responseData,
+                    headers: Object.fromEntries(fetchResponse.headers.entries()) as Record<string, string>,
+                };
+
+                const durationMs = Date.now() - startTime;
+
+                
+
+                if (response.status >= 500 || response.status === 429) {
+                    if (currentTry < maxRetries) {
+                        currentTry++;
+                        const delayStr = response.headers['retry-after'];
+                        const delay = delayStr ? parseInt(delayStr, 10) * 1000 : Math.pow(2, currentTry) * 500;
+                        this.debugLog(`Request failed with ${response.status}. Retrying in ${delay}ms. Attempt ${currentTry} of ${maxRetries}.`, 'warn');
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        continue;
+                    }
+                }
+
+                const respText = typeof responseData === 'string' 
+                    ? responseData 
+                    : JSON.stringify(responseData);
+
+                if (response.status >= 400) {
+                    this.debugLog(`HTTP Error ${response.status}: ${respText}`, 'error');
                     throw new OdealApiException(
-                        `API isteği başarısız`,
-                        axiosError.response.status,
-                        responseText
+                        `API Error: ${response.status}`,
+                        response.status,
+                        respText
                     );
                 }
+
+                // Boş yanıt kontrolü
+                if (response.status === 204 || !responseData) {
+                    this.debugLog(`Response [${response.status}]: (empty)`);
+                    return undefined as T;
+                }
+
+                this.debugLog(`Response [${response.status}]: ${respText.substring(0, 500)}${respText.length > 500 ? '...' : ''}`);
+                return responseData as T;
+
+            } catch (error) {
+                if (error instanceof OdealApiException || error instanceof OdealValidationException) {
+                    throw error;
+                }
+
+                // Network/Timeout error → retry
+                if (currentTry < maxRetries) {
+                    currentTry++;
+                    const delay = Math.pow(2, currentTry) * 500;
+                    this.debugLog(`Network/Timeout error. Retrying in ${delay}ms. Attempt ${currentTry} of ${maxRetries}.`, 'warn');
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    continue;
+                }
+                
+                this.debugLog(`Network Error: ${error}`, 'error');
+                throw new OdealApiException(
+                    `Network hatası: ${error instanceof Error ? error.message : String(error)}`,
+                    0
+                );
             }
-            
-            this.debugLog(`Network Error: ${error}`);
-            throw new OdealApiException(
-                `Network hatası: ${error instanceof Error ? error.message : String(error)}`,
-                0
-            );
         }
     }
 
@@ -404,30 +456,4 @@ export abstract class BaseResource {
         }
     }
 
-    /**
-     * Axios error kontrolü.
-     */
-    private isAxiosError(error: unknown): boolean {
-        return (
-            typeof error === 'object' &&
-            error !== null &&
-            'isAxiosError' in error &&
-            (error as { isAxiosError: boolean }).isAxiosError === true
-        );
-    }
-
-    /**
-     * Axios instance'ı döner (ESM/CJS uyumlu dinamik import).
-     */
-    private async getAxios() {
-        try {
-            // ESM import
-            const axiosModule = await import('axios');
-            return axiosModule.default || axiosModule;
-        } catch {
-            // Fallback - require (CJS)
-            // eslint-disable-next-line @typescript-eslint/no-var-requires
-            return require('axios');
-        }
-    }
 }

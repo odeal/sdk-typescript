@@ -1,14 +1,14 @@
 
-/**
- * 
- */
-import { BasketType, withBasketTypeMetadata } from './basket-type';
 import { ReceiptInfo, withReceiptInfoMetadata } from './receipt-info';
 import { Customer, withCustomerMetadata } from './customer';
 import { BasketPrice, withBasketPriceMetadata } from './basket-price';
 import { Item, withItemMetadata } from './item';
 import { PaymentOption, withPaymentOptionMetadata } from './payment-option';
+import { BasketType } from '../enums/basket-type';
 
+/**
+ * 
+ */
 export interface BasketRequest {
     /**  */
     referenceCode: string;
@@ -71,9 +71,6 @@ export function withBasketRequestMetadata<T extends BasketRequest>(obj: T): T & 
     const result = obj as any;
     result.__configMap = BasketRequestConfigMap;
     result.__validationRules = BasketRequestValidationRules;
-    if (result.basketType) {
-        result.basketType = withBasketTypeMetadata(result.basketType);
-    }
     if (result.receiptInfo) {
         result.receiptInfo = withReceiptInfoMetadata(result.receiptInfo);
     }

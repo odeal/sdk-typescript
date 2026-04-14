@@ -1,8 +1,8 @@
 
+
 /**
  * 
  */
-
 export interface BasketResponse {
     /**  */
     result?: any;

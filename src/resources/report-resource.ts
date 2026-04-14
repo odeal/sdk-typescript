@@ -1,5 +1,5 @@
 /**
- * SepetListelemeResource - API resource sınıfı.
+ * ReportResource - API resource sınıfı.
  * 
  * @remarks
  * Bu dosya otomatik olarak üretilmiştir. Manuel değişiklik yapmayınız.
@@ -8,19 +8,19 @@
 import { BaseResource } from '../base-resource';
 import { OdealConfig } from '../odeal-config';
 import {
-    BasketListResponse,
+    TransactionReport,
 } from '../models';
 
 /**
- * SepetListeleme API işlemleri.
+ * Report API işlemleri.
  * 
  * @remarks
  * BaseResource sınıfından türetilmiştir.
  * HTTP isteklerini ve validasyonu otomatik olarak yönetir.
  */
-export class SepetListelemeResource extends BaseResource {
+export class ReportResource extends BaseResource {
     /**
-     * SepetListelemeResource sınıfının yeni bir örneğini oluşturur.
+     * ReportResource sınıfının yeni bir örneğini oluşturur.
      * 
      * @param config - SDK yapılandırma ayarları
      */
@@ -29,32 +29,56 @@ export class SepetListelemeResource extends BaseResource {
     }
 
     /**
-     * Sepet Listele
+     * İşlem Raporu
      *
+     * @param beginDate - 
+     * @param endDate - 
+     * @param externalDeviceKey -  (Opsiyonel)
+     * @param basketReferenceCode -  (Opsiyonel)
      * @param options - API header parametreleri (opsiyonel, config'den otomatik doldurulur)
      * @param options.secretKey - Size özel olarak verilmiş gizli anahtar.
      * @param options.merchantKey - Size özel olarak verilmiş iş yeri anahtarı.
-     * @param options.externalDeviceKey - 
      * @param baseUrl - API sunucusunun adresi. (Opsiyonel)
-     * @returns BasketListResponse tipinde API yanıtı
+     * @returns TransactionReport[] tipinde API yanıtı
      * @throws OdealApiException - API isteği başarısız olduğunda
      * @throws OdealValidationException - Validation hatası oluştuğunda
      */
-    async listBaskets(
+    async getTransactionReport(
+        beginDate: string,
+        endDate: string,
+        externalDeviceKey?: string,
+        basketReferenceCode?: string,
         options?: {
             /** Size özel olarak verilmiş gizli anahtar. */
             secretKey?: string;
             /** Size özel olarak verilmiş iş yeri anahtarı. */
             merchantKey?: string;
-            /**  */
-            externalDeviceKey?: string;
         },
         baseUrl?: string,
-    ): Promise<BasketListResponse> {
-        const path = '/basket/list';
+    ): Promise<TransactionReport[]> {
+        const path = '/report/transactions';
 
         // Query parametreleri
         const queryParams: Record<string, string> = {};
+        if (beginDate !== undefined && beginDate !== null) {
+            queryParams['beginDate'] = String(beginDate);
+        }
+        if (endDate !== undefined && endDate !== null) {
+            queryParams['endDate'] = String(endDate);
+        }
+        // externalDeviceKey: Config'den otomatik doldurulur (ExternalDeviceKey)
+        {
+            let val = externalDeviceKey;
+            if (val === undefined || val === null) {
+                val = this.config.externalDeviceKey;
+            }
+            if (val !== undefined && val !== null) {
+                queryParams['externalDeviceKey'] = String(val);
+            }
+        }
+        if (basketReferenceCode !== undefined && basketReferenceCode !== null) {
+            queryParams['basketReferenceCode'] = String(basketReferenceCode);
+        }
 
         // Header parametreleri
         const headerParams: Record<string, string> = {};
@@ -78,19 +102,9 @@ export class SepetListelemeResource extends BaseResource {
                 headerParams['X-ODEAL-MERCHANT-KEY'] = String(val);
             }
         }
-        // externalDeviceKey: Config'den otomatik doldurulur (ExternalDeviceKey)
-        {
-            let val: string | undefined = options?.externalDeviceKey;
-            if (val === undefined || val === null) {
-                val = this.config.externalDeviceKey;
-            }
-            if (val !== undefined && val !== null) {
-                headerParams['externalDeviceKey'] = String(val);
-            }
-        }
 
         // API çağrısı
-        return this.sendRequest<BasketListResponse>(
+        return this.sendRequest<TransactionReport[]>(
             'Get',
             path,
             undefined,

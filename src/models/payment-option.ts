@@ -1,9 +1,9 @@
 
+import { PaymentOptionType } from '../enums/payment-option-type';
+
 /**
  * 
  */
-import { PaymentOptionType, withPaymentOptionTypeMetadata } from './payment-option-type';
-
 export interface PaymentOption {
     /**  */
     amount: number;
@@ -34,9 +34,6 @@ export function createPaymentOption(partial: Partial<PaymentOption> = {}): Payme
 export function withPaymentOptionMetadata<T extends PaymentOption>(obj: T): T & { __configMap?: Record<string, string>; __validationRules?: Record<string, unknown> } {
     const result = obj as any;
     result.__validationRules = PaymentOptionValidationRules;
-    if (result.type) {
-        result.type = withPaymentOptionTypeMetadata(result.type);
-    }
     
     return result;
 }
