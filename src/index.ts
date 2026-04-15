@@ -19,7 +19,7 @@ export type { OdealInterceptor, RequestContext, ResponseContext } from './interc
 export { OdealHealthCheck } from './odeal-health-check';
 export { OdealWebhookVerifier } from './webhook-verifier';
 export { sanitizeJson, sanitizeHeaders } from './sanitizer';
-export { OdealCircuitBreaker, CircuitState } from './circuit-breaker';
+export { OdealCircuitBreaker, CircuitState, OdealCircuitOpenException } from './circuit-breaker';
 
 // Models
 export * from './models';
