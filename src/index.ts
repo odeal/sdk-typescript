@@ -20,6 +20,8 @@ export { OdealHealthCheck } from './odeal-health-check';
 export { OdealWebhookVerifier } from './webhook-verifier';
 export { sanitizeJson, sanitizeHeaders } from './sanitizer';
 export { OdealCircuitBreaker, CircuitState, OdealCircuitOpenException } from './circuit-breaker';
+export { OdealRequestLogger } from './request-logger';
+export type { OdealRequestLoggerOptions } from './request-logger';
 
 // Models
 export * from './models';

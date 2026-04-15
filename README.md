@@ -153,10 +153,44 @@ const client = new OdealClient({
 });
 ```
 
+## Request Logger
+
+SDK, hazır `OdealRequestLogger` middleware'i ile tüm HTTP trafiğini loglamanıza olanak tanır:
+
+```typescript
+import { OdealRequestLogger, createOdealClient } from '@odeal/sdk';
+
+const client = createOdealClient({
+  secretKey: 'sk_xxx',
+  interceptors: [
+    new OdealRequestLogger({
+      level: 'info',                              // Log seviyesi
+      maskFields: ['password', 'cvv', 'cardNumber'], // Maskelenen alanlar
+      logBody: true,                               // Request body logla
+      logResponseBody: false,                      // Response body loglama
+      minDurationMs: 0,                            // Tüm yanıtları logla
+    })
+  ]
+});
+
+// Çıktı:
+// [ODEAL INFO] → POST https://api.odeal.com/basket/simple
+//   Body: {"merchantKey":"mk_xxx","password":"***"}
+// [ODEAL INFO] ← 200 POST https://api.odeal.com/basket/simple (142ms)
+```
+
+Özel logger fonksiyonu da kullanılabilir:
+
+```typescript
+new OdealRequestLogger({
+  logger: (message, level) => myCustomLogger.log(level, message)
+})
+```
+
 ## License
 
 MIT
 
 ## Version
 
-2.2.16
+2.2.17
