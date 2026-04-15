@@ -41,7 +41,7 @@ export type ConfigMap = Record<string, string>;
 export abstract class BaseResource {
   protected readonly config: OdealConfig;
   protected readonly log: OdealLogger;
-  private readonly AGENT = "OdealSdkTypeScriptClient/2.2.12";
+  private readonly AGENT = "OdealSdkTypeScriptClient/2.2.13";
 
   constructor(config: OdealConfig) {
     this.config = { ...defaultConfig, ...config };
@@ -207,6 +207,10 @@ export abstract class BaseResource {
         Object.entries(headers).forEach(([key, value]) => {
             let safeValue = value;
             
+                        if (this.config.maskSensitiveData && (key.toLowerCase().includes('secret') || key.toLowerCase().includes('key') || key.toLowerCase().includes('authorization'))) {
+                            safeValue = '***';
+                        }
+                        
             parts.push(`-H '${key}: ${safeValue}'`);
         });
         
@@ -214,6 +218,12 @@ export abstract class BaseResource {
         if (body) {
             let bodyJson = JSON.stringify(body);
             
+                        if (this.config.maskSensitiveData) {
+                            bodyJson = bodyJson.replace(/("password"\s*:\s*")[^"]+(")/gi, "$1***$2");
+                            bodyJson = bodyJson.replace(/("cvv"\s*:\s*")[^"]+(")/gi, "$1***$2");
+                            bodyJson = bodyJson.replace(/("cardNumber"\s*:\s*")[^"]+(")/gi, "$1***$2");
+                        }
+                        
             // Windows uyumlu escape
             const escapedBody = bodyJson.replace(/'/g, "'\\''");
             parts.push(`-d '${escapedBody}'`);
@@ -313,6 +323,16 @@ export abstract class BaseResource {
         headers['X-ODEAL-AGENT'] = this.AGENT;
 
         
+                // Idempotency Key: POST/PUT/PATCH isteklerinde çift işlem koruması
+                if (['POST', 'PUT', 'PATCH'].includes(method.toUpperCase())) {
+                    const headerName = 'X-Odeal-Idempotency-Key';
+                    if (!headers[headerName]) {
+                        headers[headerName] = typeof crypto !== 'undefined' && crypto.randomUUID
+                            ? crypto.randomUUID()
+                            : `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+                    }
+                }
+                
 
         // 5. Body hazırla - internal property'leri temizle
         const requestBody = body ? this.cleanBody(body) : undefined;
@@ -324,11 +344,25 @@ export abstract class BaseResource {
 
         // 6. Native fetch with Retry Logic
         let currentTry = 0;
-        const maxRetries = 0;
+        const maxRetries = this.config.maxRetryCount ?? 0;
 
         while (true) {
             try {
                 
+                                // Interceptor: onBeforeRequest
+                                if (this.config.interceptors?.length) {
+                                    const reqCtx = {
+                                        method: method.toUpperCase(),
+                                        url,
+                                        headers: { ...headers },
+                                        body: requestBody,
+                                        metadata: {}
+                                    };
+                                    for (const interceptor of this.config.interceptors) {
+                                        await interceptor.onBeforeRequest?.(reqCtx);
+                                    }
+                                }
+                                
 
                 const startTime = Date.now();
 
@@ -369,6 +403,21 @@ export abstract class BaseResource {
                 const durationMs = Date.now() - startTime;
 
                 
+                                // Interceptor: onAfterResponse
+                                if (this.config.interceptors?.length) {
+                                    const respCtx = {
+                                        statusCode: response.status,
+                                        headers: response.headers,
+                                        body: response.data,
+                                        durationMs,
+                                        request: { method: method.toUpperCase(), url, headers: { ...headers }, metadata: {} },
+                                        metadata: {}
+                                    };
+                                    for (const interceptor of this.config.interceptors) {
+                                        await interceptor.onAfterResponse?.(respCtx);
+                                    }
+                                }
+                                
 
                 if (response.status >= 500 || response.status === 429) {
                     if (currentTry < maxRetries) {
