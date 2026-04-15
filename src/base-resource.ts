@@ -12,6 +12,9 @@
 import { OdealConfig, OdealLogger, ConsoleOdealLogger, defaultConfig } from './odeal-config';
 import { OdealApiException, OdealValidationException } from './exceptions';
 
+import { OdealCircuitBreaker, OdealCircuitOpenException } from './circuit-breaker';
+
+
 /**
  * Validation kuralları tipi.
  */
@@ -41,11 +44,22 @@ export type ConfigMap = Record<string, string>;
 export abstract class BaseResource {
   protected readonly config: OdealConfig;
   protected readonly log: OdealLogger;
-  private readonly AGENT = "OdealSdkTypeScriptClient/2.2.13";
+  private readonly AGENT = "OdealSdkTypeScriptClient/2.2.14";
+  
+    private readonly circuitBreaker?: OdealCircuitBreaker;
+    
 
   constructor(config: OdealConfig) {
     this.config = { ...defaultConfig, ...config };
     this.log = this.config.logger ?? new ConsoleOdealLogger();
+    
+        if (this.config.circuitBreakerEnabled) {
+          this.circuitBreaker = new OdealCircuitBreaker(
+            this.config.circuitBreakerThreshold ?? 5,
+            this.config.circuitBreakerResetMs ?? 60000
+          );
+        }
+        
   }
 
     /**
@@ -346,6 +360,13 @@ export abstract class BaseResource {
         let currentTry = 0;
         const maxRetries = this.config.maxRetryCount ?? 0;
 
+        
+                // Circuit Breaker Guard
+                if (this.circuitBreaker && !this.circuitBreaker.allowRequest()) {
+                    throw new OdealCircuitOpenException();
+                }
+                
+
         while (true) {
             try {
                 
@@ -420,6 +441,9 @@ export abstract class BaseResource {
                                 
 
                 if (response.status >= 500 || response.status === 429) {
+                    
+                                        this.circuitBreaker?.recordFailure();
+                                        
                     if (currentTry < maxRetries) {
                         currentTry++;
                         const delayStr = response.headers['retry-after'];
@@ -429,6 +453,11 @@ export abstract class BaseResource {
                         continue;
                     }
                 }
+
+                
+                                // Başarılı yanıt
+                                this.circuitBreaker?.recordSuccess();
+                                
 
                 const respText = typeof responseData === 'string' 
                     ? responseData 
@@ -456,6 +485,10 @@ export abstract class BaseResource {
                 if (error instanceof OdealApiException || error instanceof OdealValidationException) {
                     throw error;
                 }
+
+                
+                                this.circuitBreaker?.recordFailure();
+                                
 
                 // Network/Timeout error → retry
                 if (currentTry < maxRetries) {
