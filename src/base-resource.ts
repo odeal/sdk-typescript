@@ -44,7 +44,7 @@ export type ConfigMap = Record<string, string>;
 export abstract class BaseResource {
   protected readonly config: OdealConfig;
   protected readonly log: OdealLogger;
-  private readonly AGENT = "OdealSdkTypeScriptClient/2.2.17";
+  private readonly AGENT = "OdealSdkTypeScriptClient/2.3.0";
   
     private readonly circuitBreaker?: OdealCircuitBreaker;
     
