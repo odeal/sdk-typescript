@@ -21,7 +21,7 @@ import { OdealEnvironment, getEnvironmentBaseUrl } from './odeal-environment';
 
 export class OdealConfigBuilder {
     private config: Partial<OdealConfig> = {
-        baseUrl: 'https://stage.odealapp.com/api/v1',
+        baseUrl: 'https://api.odeal.com/v1',
         timeout: 30000,
         maxRetryCount: 3,
         debugMode: false,

@@ -30,7 +30,7 @@ import { OdealEnvironment, getEnvironmentBaseUrl } from './odeal-environment';
 export function createOdealClient(config: Partial<OdealConfig> & Pick<OdealConfig, 'secretKey' | 'merchantKey'>) {
     // Dynamic import to avoid circular dependency
     const fullConfig: OdealConfig = {
-        baseUrl: 'https://stage.odealapp.com/api/v1',
+        baseUrl: 'https://api.odeal.com/v1',
         timeout: 30000,
         maxRetryCount: 3,
         debugMode: false,
@@ -72,7 +72,7 @@ export function createOdealClientFromEnv(overrides: Partial<OdealConfig> = {}) {
     }
 
     // Ortam belirleme (öncelik: ODEAL_BASE_URL > ODEAL_SANDBOX > ODEAL_ENVIRONMENT > default)
-    let baseUrl: string = 'https://stage.odealapp.com/api/v1';
+    let baseUrl: string = 'https://api.odeal.com/v1';
     const envStr = process.env.ODEAL_ENVIRONMENT;
     if (envStr === 'production' || envStr === 'prod') {
         baseUrl = getEnvironmentBaseUrl(OdealEnvironment.Production);

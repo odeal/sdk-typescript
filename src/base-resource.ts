@@ -44,7 +44,7 @@ export type ConfigMap = Record<string, string>;
 export abstract class BaseResource {
   protected readonly config: OdealConfig;
   protected readonly log: OdealLogger;
-  private readonly AGENT = "OdealSdkTypeScriptClient/2.3.0";
+  private readonly AGENT = "OdealSdkTypeScriptClient/2.4.0";
   
     private readonly circuitBreaker?: OdealCircuitBreaker;
     
@@ -313,14 +313,13 @@ export abstract class BaseResource {
             }
         }
 
-        // 4. Headers - Sadece Content-Type ve Accept burada tanımlanır
-        // API spesifik header'lar (X-ODEAL-SECRET-KEY vb.) headerParams'tan gelir
+        // 4. Headers — Sadece Content-Type, Accept ve Agent burada tanımlanır.
+        // Auth header'lar (X-ODEAL-SECRET-KEY, X-ODEAL-MERCHANT-KEY) swagger-declared
+        // params olarak Resource sınıfından headerParams ile gelir.
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       Accept: 'application/json',
       'X-ODEAL-AGENT': this.AGENT,
-      'X-ODEAL-SECRET-KEY': this.config.secretKey || '',
-      'X-ODEAL-MERCHANT-KEY': this.config.merchantKey || '',
     };
 
         // Swagger'dan gelen header parametreleri (Resource sınıfından)

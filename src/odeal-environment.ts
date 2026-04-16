@@ -24,7 +24,8 @@ export function getEnvironmentBaseUrl(env: OdealEnvironment): string {
         case OdealEnvironment.Production:
             return 'https://api.odeal.com/v1';
         case OdealEnvironment.Staging:
-        default:
             return 'https://stage.odealapp.com/api/v1';
+        default:
+            return 'https://api.odeal.com/v1';
     }
 }

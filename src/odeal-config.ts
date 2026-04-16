@@ -72,7 +72,7 @@ export class ConsoleOdealLogger implements OdealLogger {
 export interface OdealConfig {
     /**
      * API base URL'i.
-     * @default 'https://stage.odealapp.com/api/v1'
+     * @default 'https://api.odeal.com/v1'
      */
     baseUrl: string;
 
@@ -154,7 +154,7 @@ export interface OdealConfig {
  * Varsayılan konfigürasyon değerleri.
  */
 export const defaultConfig: OdealConfig = {
-  baseUrl: 'https://stage.odealapp.com/api/v1',
+  baseUrl: 'https://api.odeal.com/v1',
   secretKey: '',
   merchantKey: '',
   skipClientValidation: false,
