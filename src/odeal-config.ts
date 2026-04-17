@@ -148,6 +148,13 @@ export interface OdealConfig {
    * @see OdealInterceptor
    */
   interceptors?: OdealInterceptor[];
+
+  /**
+   * Sandbox (test) modu. True olduğunda baseUrl değerine bakılmaksızın staging ortamı kullanılır.
+   * Production'a geçmeden önce test yapmak için kullanışlıdır.
+   * @default false
+   */
+  sandboxMode?: boolean;
 }
 
 /**
@@ -161,8 +168,19 @@ export const defaultConfig: OdealConfig = {
   debugMode: false,
   timeout: 30000,
   maxRetryCount: 3,
-  maskSensitiveData: true
+  maskSensitiveData: true,
+  sandboxMode: false
 };
+
+/**
+ * Efektif base URL — sandboxMode aktifse staging, değilse baseUrl döner.
+ */
+export function getEffectiveBaseUrl(config: OdealConfig): string {
+  if (config.sandboxMode) {
+    return 'https://stage.odealapp.com/api/v1';
+  }
+  return config.baseUrl;
+}
 
 /**
  * Konfigürasyonun geçerli olup olmadığını kontrol eder.

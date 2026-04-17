@@ -43,15 +43,20 @@ export type ConfigMap = Record<string, string>;
  */
 export abstract class BaseResource {
   protected readonly config: OdealConfig;
-  protected readonly log: OdealLogger;
-  private readonly AGENT = "OdealSdkTypeScriptClient/2.4.0";
+  
+    protected readonly log: OdealLogger;
+    
+  private readonly AGENT = "OdealSdkTypeScriptClient/2.5.0";
   
     private readonly circuitBreaker?: OdealCircuitBreaker;
     
 
   constructor(config: OdealConfig) {
     this.config = { ...defaultConfig, ...config };
-    this.log = this.config.logger ?? new ConsoleOdealLogger();
+    
+        this.log = this.config.logger ?? new ConsoleOdealLogger();
+        
+    
     
         if (this.config.circuitBreakerEnabled) {
           this.circuitBreaker = new OdealCircuitBreaker(
@@ -165,14 +170,16 @@ export abstract class BaseResource {
      * @param message - Log mesajı
      */
     protected debugLog(message: string, level: 'debug' | 'info' | 'warn' | 'error' = 'debug'): void {
-        if (this.config.debugMode || level === 'error' || level === 'warn') {
-            switch (level) {
-                case 'error': this.log.error(message); break;
-                case 'warn':  this.log.warn(message);  break;
-                case 'info':  this.log.info(message);  break;
-                default:      this.log.debug(message);  break;
-            }
-        }
+        
+                if (this.config.debugMode || level === 'error' || level === 'warn') {
+                    switch (level) {
+                        case 'error': this.log.error(message); break;
+                        case 'warn':  this.log.warn(message);  break;
+                        case 'info':  this.log.info(message);  break;
+                        default:      this.log.debug(message);  break;
+                    }
+                }
+                
     }
 
     /**
