@@ -46,7 +46,7 @@ export abstract class BaseResource {
   
     protected readonly log: OdealLogger;
     
-  private readonly AGENT = "OdealSdkTypeScriptClient/2.5.0";
+  private readonly AGENT = "OdealSdkTypeScriptClient/2.7.0";
   
     private readonly circuitBreaker?: OdealCircuitBreaker;
     

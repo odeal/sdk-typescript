@@ -1,6 +1,6 @@
 {
   "name": "@odeal/sdk",
-  "version": "2.5.0",
+  "version": "2.7.0",
   "description": "Odeal Entegrasyon SDK (Otomatik Üretildi)",
   "author": "Odeal",
   "license": "MIT",
@@ -40,6 +40,9 @@
     "node": ">=18.0.0"
   },
   "dependencies": {},
+  "overrides": {
+    "esbuild": "^0.28.1"
+  },
   "devDependencies": {
     "typescript": "^5.5.0",
     "@types/node": "^20.10.0",
