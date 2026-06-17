@@ -11,6 +11,7 @@
 
 import { OdealConfig, OdealLogger, ConsoleOdealLogger, defaultConfig } from './odeal-config';
 import { OdealApiException, OdealValidationException } from './exceptions';
+import { sanitizeJson } from './sanitizer';
 
 import { OdealCircuitBreaker, OdealCircuitOpenException } from './circuit-breaker';
 
@@ -46,7 +47,7 @@ export abstract class BaseResource {
   
     protected readonly log: OdealLogger;
     
-  private readonly AGENT = "OdealSdkTypeScriptClient/2.7.0";
+  private readonly AGENT = "OdealSdkTypeScriptClient/2.8.0";
   
     private readonly circuitBreaker?: OdealCircuitBreaker;
     
@@ -240,9 +241,7 @@ export abstract class BaseResource {
             let bodyJson = JSON.stringify(body);
             
                         if (this.config.maskSensitiveData) {
-                            bodyJson = bodyJson.replace(/("password"\s*:\s*")[^"]+(")/gi, "$1***$2");
-                            bodyJson = bodyJson.replace(/("cvv"\s*:\s*")[^"]+(")/gi, "$1***$2");
-                            bodyJson = bodyJson.replace(/("cardNumber"\s*:\s*")[^"]+(")/gi, "$1***$2");
+                            bodyJson = sanitizeJson(bodyJson) ?? bodyJson;
                         }
                         
             // Windows uyumlu escape

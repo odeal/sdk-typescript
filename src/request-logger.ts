@@ -1,5 +1,15 @@
 import { OdealInterceptor, RequestContext, ResponseContext } from './interceptor';
 
+const DEFAULT_MASK_FIELDS = [
+  'password', 'cvv', 'cvc', 'cardNumber', 'card_number', 'pan',
+  'expiryDate', 'expiry_date', 'securityCode', 'security_code',
+  'secretKey', 'secret_key', 'token', 'accessToken', 'access_token',
+  'refreshToken', 'refresh_token', 'authorization',
+  'tckn', 'tcKimlikNo', 'tcKimlik', 'identityNumber', 'nationalId',
+  'iban', 'phone', 'phoneNumber', 'telephone', 'gsm',
+  'email', 'eMail', 'mail', 'address', 'adres',
+];
+
 /**
  * Request Logger yapılandırma seçenekleri.
  */
@@ -8,7 +18,7 @@ export interface OdealRequestLoggerOptions {
   level?: 'info' | 'debug' | 'warn' | 'error';
   /** Loglanacak minimum süre (ms). Bu süreden kısa yanıtlar loglanmaz. Varsayılan: 0 */
   minDurationMs?: number;
-  /** Maskelenmesi gereken JSON alan adları. Varsayılan: ['password', 'cvv', 'cardNumber'] */
+  /** Maskelenmesi gereken JSON alan adları. */
   maskFields?: string[];
   /** Request body loglanacak mı? Varsayılan: true */
   logBody?: boolean;
@@ -43,7 +53,7 @@ export class OdealRequestLogger implements OdealInterceptor {
     this.options = {
       level: options.level ?? 'info',
       minDurationMs: options.minDurationMs ?? 0,
-      maskFields: options.maskFields ?? ['password', 'cvv', 'cardNumber'],
+      maskFields: options.maskFields ?? DEFAULT_MASK_FIELDS,
       logBody: options.logBody ?? true,
       logResponseBody: options.logResponseBody ?? false,
       logger: options.logger ?? ((msg, _lvl) => console.log(msg)),
@@ -79,9 +89,13 @@ export class OdealRequestLogger implements OdealInterceptor {
   private maskSensitive(text: string): string {
     let result = text;
     for (const field of this.options.maskFields) {
-      const regex = new RegExp(`("${field}"\\s*:\\s*")[^"]+(")`, 'gi');
+      const regex = new RegExp(`("${escapeRegex(field)}"\\s*:\\s*")[^"]+(")`, 'gi');
       result = result.replace(regex, '$1***$2');
     }
     return result;
   }
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

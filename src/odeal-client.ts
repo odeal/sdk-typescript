@@ -174,6 +174,19 @@ export class OdealClient {
         return this._basket.deleteBasket(referenceCode, options, baseUrl);
     }
 
+    /**
+     * Tüm Sepetleri Sil
+     */
+    async deleteAllBaskets(
+        options?: {
+            secretKey?: string;
+            merchantKey?: string;
+        },
+        baseUrl?: string,
+    ): Promise<void> {
+        return this._basket.deleteAllBaskets(options, baseUrl);
+    }
+
     // ───────────────────────────────────────────────────────────────────────────
     // PAYMENT
     // ───────────────────────────────────────────────────────────────────────────

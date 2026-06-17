@@ -2,8 +2,12 @@
 
 > Odeal Entegrasyon SDK (Otomatik Üretildi)
 
-> **Version:** 2.7.0 | **License:** MIT | **Auto-Generated** by Odeal SDK Generator
+> **Version:** 2.8.0 | **License:** MIT | **Auto-Generated** by Odeal SDK Generator
 
+
+## Requirements
+
+- Node.js 18 or newer. The SDK uses the native `fetch` runtime API.
 
 ## Installation
 
@@ -142,7 +146,7 @@ const client = createOdealClient({
   interceptors: [
     new OdealRequestLogger({
       level: 'info',
-      maskFields: ['password', 'cvv', 'cardNumber'],
+      maskFields: ['password', 'cvv', 'cardNumber', 'tckn', 'iban', 'email', 'phone', 'address'],
       logBody: true,
       logResponseBody: false,
       minDurationMs: 0,
@@ -208,6 +212,7 @@ const client = new OdealClient({
 | `CreateFoodCardBasket()` | Yemek kartı işlemleri. `receiptInfo` ve içindeki `foodCardBrandId` zorunludur. |
 | `ListBaskets()` | Sepet Listele |
 | `DeleteBasket()` | Sepet Sil |
+| `DeleteAllBaskets()` | Tüm Sepetleri Sil |
 ### PaymentResource
 
 | Method | Description |
