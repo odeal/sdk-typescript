@@ -1,22 +1,25 @@
 
 
 /**
- * API hata yanit modeli.
+ * API iş kuralı hata yanıt modeli (BUSINESS hataları).
  */
 export interface ErrorResponse {
-    /** Hata kodu. */
-    error?: string;
-    /** Hata aciklamasi. */
+    /** İş kuralı hata kodu (ör. 2029). */
+    code?: number;
+    /** Hata tipi (ör. BUSINESS, VALIDATION). */
+    exceptionType?: string;
+    /** Teknik hata açıklaması. */
     message?: string;
-    /** Detayli hata listesi. */
-    details?: string[];
+    /** Son kullanıcıya gösterilebilecek mesaj. */
+    userMessage?: string;
 }
 
 export function createErrorResponse(partial: Partial<ErrorResponse> = {}): ErrorResponse & { __configMap?: Record<string, string>; __validationRules?: Record<string, unknown> } {
     const obj = {
-        error: partial.error,
+        code: partial.code,
+        exceptionType: partial.exceptionType,
         message: partial.message,
-        details: partial.details ?? [],
+        userMessage: partial.userMessage,
     } as any;
     
     return obj;

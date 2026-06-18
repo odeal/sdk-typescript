@@ -7,6 +7,11 @@
 
 import { BaseResource } from '../base-resource';
 import { OdealConfig } from '../odeal-config';
+import {
+    CancelPaymentRequest,
+    CancelPaymentResponse,
+    withCancelPaymentRequestMetadata,
+} from '../models';
 
 /**
  * Payment API işlemleri.
@@ -33,12 +38,12 @@ export class PaymentResource extends BaseResource {
      * @param options.secretKey - Size özel olarak verilmiş gizli anahtar.
      * @param options.merchantKey - Size özel olarak verilmiş iş yeri anahtarı.
      * @param baseUrl - API sunucusunun adresi. (Opsiyonel)
-     * @returns any tipinde API yanıtı
+     * @returns CancelPaymentResponse tipinde API yanıtı
      * @throws OdealApiException - API isteği başarısız olduğunda
      * @throws OdealValidationException - Validation hatası oluştuğunda
      */
     async cancelPayment(
-        request: any,
+        request: CancelPaymentRequest,
         options?: {
             /** Size özel olarak verilmiş gizli anahtar. */
             secretKey?: string;
@@ -46,7 +51,7 @@ export class PaymentResource extends BaseResource {
             merchantKey?: string;
         },
         baseUrl?: string,
-    ): Promise<any> {
+    ): Promise<CancelPaymentResponse> {
         const path = '/payment/cancel';
 
         // Query parametreleri
@@ -74,12 +79,14 @@ export class PaymentResource extends BaseResource {
                 headerParams['X-ODEAL-MERCHANT-KEY'] = String(val);
             }
         }
+        // Body'ye config ve validation metadata ekle
+        const bodyWithMetadata = withCancelPaymentRequestMetadata(request);
 
         // API çağrısı
-        return this.sendRequest<any>(
+        return this.sendRequest<CancelPaymentResponse>(
             'Put',
             path,
-            request,
+            bodyWithMetadata,
             Object.keys(queryParams).length > 0 ? queryParams : undefined,
             Object.keys(headerParams).length > 0 ? headerParams : undefined,
             baseUrl

@@ -19,6 +19,8 @@ import {
     BasketRequestCurrentAccount,
     BasketRequestFoodCard,
     BasketListResponse,
+    CancelPaymentRequest,
+    CancelPaymentResponse,
     ConfigurationRequest,
     Unit,
     TransactionReport,
@@ -195,13 +197,13 @@ export class OdealClient {
      * Ödeme İptali
      */
     async cancelPayment(
-        request: any,
+        request: CancelPaymentRequest,
         options?: {
             secretKey?: string;
             merchantKey?: string;
         },
         baseUrl?: string,
-    ): Promise<any> {
+    ): Promise<CancelPaymentResponse> {
         return this._payment.cancelPayment(request, options, baseUrl);
     }
 
