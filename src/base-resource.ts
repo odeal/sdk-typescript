@@ -10,6 +10,7 @@
  */
 
 import { OdealConfig, OdealLogger, ConsoleOdealLogger, defaultConfig } from './odeal-config';
+import { MultipartBody } from './multipart-body';
 import {
     OdealApiException, OdealValidationException,
     OdealAuthenticationException, OdealForbiddenException,
@@ -51,7 +52,7 @@ export abstract class BaseResource {
   
     protected readonly log: OdealLogger;
     
-  private readonly AGENT = "OdealSdkTypeScriptClient/2.12.0";
+  private readonly AGENT = "OdealSdkTypeScriptClient/2.14.0";
   
     private readonly circuitBreaker?: OdealCircuitBreaker;
     
@@ -345,6 +346,11 @@ export abstract class BaseResource {
         // Agent header'ını her zaman ez (Kullanıcı değiştiremesin)
         headers['X-ODEAL-AGENT'] = this.AGENT;
 
+        // OAuth2 / Bearer: accessToken ayarlıysa Authorization header ekle (boşsa eklenmez)
+        if (this.config.accessToken) {
+            headers['Authorization'] = `Bearer ${this.config.accessToken}`;
+        }
+
         
                 // Idempotency Key: POST/PUT/PATCH isteklerinde çift işlem koruması
                 if (['POST', 'PUT', 'PATCH'].includes(method.toUpperCase())) {
@@ -358,7 +364,14 @@ export abstract class BaseResource {
                 
 
         // 5. Body hazırla - internal property'leri temizle
-        const requestBody = body ? this.cleanBody(body) : undefined;
+        // multipart/form-data: FormData üret, Content-Type'ı kaldır (fetch boundary'yi kendi ekler).
+        let requestBody: any;
+        if (body instanceof MultipartBody) {
+            requestBody = body.toFormData();
+            delete headers['Content-Type'];
+        } else {
+            requestBody = body ? this.cleanBody(body) : undefined;
+        }
 
         // Debug: curl komutu
         if (this.config.debugMode) {
@@ -407,7 +420,9 @@ export abstract class BaseResource {
                     signal: controller.signal,
                 };
                 if (requestBody !== undefined && requestBody !== null) {
-                    fetchOptions.body = typeof requestBody === 'string' ? requestBody : JSON.stringify(requestBody);
+                    fetchOptions.body = requestBody instanceof FormData
+                        ? requestBody
+                        : (typeof requestBody === 'string' ? requestBody : JSON.stringify(requestBody));
                 }
 
                 const fetchResponse = await fetch(url, fetchOptions);

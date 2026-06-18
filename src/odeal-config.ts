@@ -86,6 +86,11 @@ export interface OdealConfig {
      */
     merchantKey?: string;
 
+    /**
+     * OAuth2 / Bearer erişim token'ı. Ayarlandığında her isteğe Authorization: Bearer eklenir.
+     */
+    accessToken?: string;
+
   /**
    * Harici cihaz anahtarı. POS cihazı tanımlama için kullanılır.
    */
