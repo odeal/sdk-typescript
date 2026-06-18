@@ -2,7 +2,7 @@
 
 > Odeal Entegrasyon SDK (Otomatik Üretildi)
 
-> **Version:** 2.10.0 | **License:** MIT | **Auto-Generated** by Odeal SDK Generator
+> **Version:** 2.11.0 | **License:** MIT | **Auto-Generated** by Odeal SDK Generator
 
 
 ## Requirements

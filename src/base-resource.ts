@@ -10,7 +10,11 @@
  */
 
 import { OdealConfig, OdealLogger, ConsoleOdealLogger, defaultConfig } from './odeal-config';
-import { OdealApiException, OdealValidationException } from './exceptions';
+import {
+    OdealApiException, OdealValidationException,
+    OdealAuthenticationException, OdealForbiddenException,
+    OdealNotFoundException, OdealRateLimitException,
+} from './exceptions';
 import { sanitizeJson } from './sanitizer';
 
 import { OdealCircuitBreaker, OdealCircuitOpenException } from './circuit-breaker';
@@ -47,7 +51,7 @@ export abstract class BaseResource {
   
     protected readonly log: OdealLogger;
     
-  private readonly AGENT = "OdealSdkTypeScriptClient/2.10.0";
+  private readonly AGENT = "OdealSdkTypeScriptClient/2.11.0";
   
     private readonly circuitBreaker?: OdealCircuitBreaker;
     
@@ -474,11 +478,14 @@ export abstract class BaseResource {
 
                 if (response.status >= 400) {
                     this.debugLog(`HTTP Error ${response.status}: ${respText}`, 'error');
-                    throw new OdealApiException(
-                        `API Error: ${response.status}`,
-                        response.status,
-                        respText
-                    );
+                    // Zengin hata hiyerarşisi: status → spesifik exception tipi
+                    switch (response.status) {
+                        case 401: throw new OdealAuthenticationException(undefined, respText);
+                        case 403: throw new OdealForbiddenException(undefined, respText);
+                        case 404: throw new OdealNotFoundException(undefined, respText);
+                        case 429: throw new OdealRateLimitException(undefined, respText);
+                        default: throw new OdealApiException(`API Error: ${response.status}`, response.status, respText);
+                    }
                 }
 
                 // Boş yanıt kontrolü
