@@ -2,7 +2,7 @@
 
 > Odeal Entegrasyon SDK (Otomatik Üretildi)
 
-> **Version:** 2.9.0 | **License:** MIT | **Auto-Generated** by Odeal SDK Generator
+> **Version:** 2.10.0 | **License:** MIT | **Auto-Generated** by Odeal SDK Generator
 
 
 ## Requirements
@@ -182,6 +182,38 @@ const client = new OdealClient({
 
 // Automatic retry on 5xx and 429 with exponential backoff
 // Retry-After header is respected
+```
+
+## Webhook Verification
+
+Gelen Odeal webhook'larının gerçekten Odeal'den geldiğini HMAC-SHA256 imzasıyla doğrulayın.
+İmza `x-odeal-signature` header'ında, **ham gövde** üzerinden hesaplanarak gelir.
+
+```typescript
+import express from 'express';
+import { OdealWebhookVerifier } from '@odeal/sdk';
+
+const app = express();
+
+// Ham gövde gerekir — imza ham bytes üzerinden hesaplanır
+app.post('/webhooks/odeal', express.raw({ type: 'application/json' }), (req, res) => {
+  const payload = req.body.toString('utf8');
+  const signature = req.header(OdealWebhookVerifier.SIGNATURE_HEADER) ?? '';
+
+  if (!OdealWebhookVerifier.verifySignature(payload, signature, 'your-webhook-secret')) {
+    return res.status(401).send('Invalid webhook signature');
+  }
+
+  // İmza geçerli — webhook olayını işle
+  res.sendStatus(200);
+});
+```
+
+Replay koruması için timestamp doğrulamalı sürüm (önerilir):
+
+```typescript
+const valid = OdealWebhookVerifier.verifySignatureWithTimestamp(
+  payload, signature, timestamp, 'your-webhook-secret'); // varsayılan 5 dk tolerans
 ```
 
 ## Features
