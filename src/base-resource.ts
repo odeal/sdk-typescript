@@ -47,7 +47,7 @@ export abstract class BaseResource {
   
     protected readonly log: OdealLogger;
     
-  private readonly AGENT = "OdealSdkTypeScriptClient/2.8.0";
+  private readonly AGENT = "OdealSdkTypeScriptClient/2.9.0";
   
     private readonly circuitBreaker?: OdealCircuitBreaker;
     
@@ -460,11 +460,15 @@ export abstract class BaseResource {
                 }
 
                 
-                                // Başarılı yanıt
-                                this.circuitBreaker?.recordSuccess();
+                                // Devre-kıran: yalnızca 5xx/429 OLMAYAN yanıtlar başarı sayılır. 5xx/429 retry
+                                // tükenmişse yukarıda recordFailure yapıldı; burada recordSuccess çağırıp sayacı
+                                // sıfırlamamalıyız (aksi halde devre HTTP hatalarında asla açılmaz).
+                                if (response.status < 500 && response.status !== 429) {
+                                    this.circuitBreaker?.recordSuccess();
+                                }
                                 
 
-                const respText = typeof responseData === 'string' 
+                const respText = typeof responseData === 'string'
                     ? responseData 
                     : JSON.stringify(responseData);
 

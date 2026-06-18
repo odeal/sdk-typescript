@@ -2,7 +2,7 @@
 
 > Odeal Entegrasyon SDK (Otomatik Üretildi)
 
-> **Version:** 2.8.0 | **License:** MIT | **Auto-Generated** by Odeal SDK Generator
+> **Version:** 2.9.0 | **License:** MIT | **Auto-Generated** by Odeal SDK Generator
 
 
 ## Requirements
@@ -29,7 +29,9 @@ const client = new OdealClient({
   merchantKey: 'your-merchant-key',
 });
 
-const response = await client.basket.createSimpleBasket({ /* ... */ });
+// SDK iki kullanım biçimini de destekler — ikisi de eşdeğerdir, aynı metoda gider:
+const response  = await client.createSimpleBasket({ /* ... */ });        // 1) Flat (doğrudan)
+const response2 = await client.basket.createSimpleBasket({ /* ... */ }); // 2) Grouped (resource üzerinden)
 ```
 
 ## Configuration
