@@ -2,7 +2,7 @@
 
 > Odeal Entegrasyon SDK (Otomatik Üretildi)
 
-> **Version:** 2.14.0 | **License:** MIT | **Auto-Generated** by Odeal SDK Generator
+> **Version:** 2.15.0 | **License:** MIT | **Auto-Generated** by Odeal SDK Generator
 
 
 ## Requirements
@@ -267,6 +267,36 @@ const valid = OdealWebhookVerifier.verifySignatureWithTimestamp(
 | Method | Description |
 |:-------|:------------|
 | `GetTransactionReport()` | İşlem Raporu |
+
+## 🔐 Güvenlik & Doğrulama
+
+Bu paket **Sigstore (cosign)** ile imzalanır ve doğrulanabilir kanıtlarla (attestation) yayınlanır:
+
+- **İmza** — keyless cosign imzası; kimlik, yayınlayan CI workflow'una OIDC ile bağlanır
+- **SBOM** — CycloneDX yazılım malzeme listesi (imzalı attestation)
+- **Zafiyet taraması** — grype taraması (imzalı attestation)
+- **Provenance** — SLSA build-provenance attestation'ı
+
+### Doğrulama
+
+```bash
+# Paket imzası
+cosign verify-blob \
+  --bundle sign.bundle.json \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --certificate-identity-regexp "<yayın-workflow-url>" \
+  <paket-dosyası>
+
+# SBOM attestation
+cosign verify-blob-attestation \
+  --bundle sbom.bundle.json --type cyclonedx \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --certificate-identity-regexp "<yayın-workflow-url>" \
+  <paket-dosyası>
+```
+
+Güvenlik açığı bildirimi ve tam talimatlar için: [`SECURITY.md`](./SECURITY.md)
+
 
 ## License
 

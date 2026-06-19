@@ -121,7 +121,8 @@ jobs:
       run: |
         grype --version
         
-        grype sbom:artifacts/sbom.json -f high
+        # İlk geçişte BLOKE ETMEZ — yalnız raporlar. Gate için '|| echo ...' kaldırın.
+        grype sbom:artifacts/sbom.json -f high || echo "::warning::grype: yüksek/kritik zafiyet bulundu (ilk geçişte bloke edilmiyor)"
         
         grype sbom:artifacts/sbom.json -o cyclonedx-json > artifacts/vuln.json
 
@@ -149,10 +150,10 @@ jobs:
 
 # PROVENANCE
 
-    # - name: Generate provenance
-    #   uses: actions/attest-build-provenance@v4
-    #   with:
-    #     subject-path: artifacts #/package.nupkg
+    - name: Generate provenance
+      uses: actions/attest-build-provenance@v4
+      with:
+        subject-path: ${{ env.PKG }}
 
 # ARTIFACT UPLOAD
 

@@ -84,6 +84,6 @@ export class UnitResource extends BaseResource {
             Object.keys(queryParams).length > 0 ? queryParams : undefined,
             Object.keys(headerParams).length > 0 ? headerParams : undefined,
             baseUrl
-        );
+        ).then(r => this.unwrapList<Unit[]>(r));
     }
 }

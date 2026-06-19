@@ -52,7 +52,7 @@ export abstract class BaseResource {
   
     protected readonly log: OdealLogger;
     
-  private readonly AGENT = "OdealSdkTypeScriptClient/2.14.0";
+  private readonly AGENT = "OdealSdkTypeScriptClient/2.15.0";
   
     private readonly circuitBreaker?: OdealCircuitBreaker;
     
@@ -194,6 +194,18 @@ export abstract class BaseResource {
      * @param obj - Temizlenecek obje
      * @returns Temizlenmiş obje
      */
+    /**
+     * {"result":[...]} sarmalı yanıtı listeye açar; zaten liste/diğer ise olduğu gibi döner.
+     * Liste dönen Resource metotları bunu kullanır (C# BaseResource ile aynı davranış).
+     */
+    protected unwrapList<T>(data: unknown): T {
+        if (data !== null && typeof data === 'object' && !Array.isArray(data)
+            && 'result' in (data as Record<string, unknown>)) {
+            return (data as { result: T }).result;
+        }
+        return data as T;
+    }
+
     private cleanBody(obj: unknown): unknown {
         if (obj === null || obj === undefined) {
             return obj;

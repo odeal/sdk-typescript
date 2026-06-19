@@ -1,6 +1,6 @@
 {
   "name": "@odeal/sdk",
-  "version": "2.14.0",
+  "version": "2.15.0",
   "description": "Odeal Entegrasyon SDK (Otomatik Üretildi)",
   "author": "Odeal",
   "license": "MIT",
@@ -17,7 +17,9 @@
   "files": [
     "dist",
     "src",
-    "README.md"
+    "README.md",
+    "LICENSE",
+    "SECURITY.md"
   ],
   "scripts": {
     "build": "tsup src/index.ts --format esm,cjs --dts --clean",
