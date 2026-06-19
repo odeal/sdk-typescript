@@ -12,4 +12,4 @@ adresine bildirin. İlk yanıt 3 iş günü içinde verilir.
 Bu paket Sigstore (cosign) ile imzalanır ve CycloneDX SBOM + zafiyet attestation'ı ile
 yayınlanır. İmza/SBOM doğrulama talimatları için generator deposunun `SECURITY.md` dosyasına bakın.
 
-Sürüm: 2.16.0
+Sürüm: 2.16.1
