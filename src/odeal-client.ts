@@ -22,6 +22,7 @@ import {
     CancelPaymentRequest,
     CancelPaymentResponse,
     ConfigurationRequest,
+    ConfigurationResponse,
     Unit,
     TransactionReport,
 } from './models';
@@ -223,6 +224,19 @@ export class OdealClient {
         baseUrl?: string,
     ): Promise<void> {
         return this._configuration.saveConfiguration(request, options, baseUrl);
+    }
+
+    /**
+     * Konfigürasyon Getir
+     */
+    async getConfiguration(
+        options?: {
+            secretKey?: string;
+            merchantKey?: string;
+        },
+        baseUrl?: string,
+    ): Promise<ConfigurationResponse> {
+        return this._configuration.getConfiguration(options, baseUrl);
     }
 
     // ───────────────────────────────────────────────────────────────────────────

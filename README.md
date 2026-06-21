@@ -2,7 +2,7 @@
 
 > Odeal Entegrasyon SDK (Otomatik Üretildi)
 
-> **Version:** 2.16.1 | **License:** MIT | **Auto-Generated** by Odeal SDK Generator
+> **Version:** 2.17.0 | **License:** MIT | **Auto-Generated** by Odeal SDK Generator
 
 
 ## Requirements
@@ -257,6 +257,7 @@ const valid = OdealWebhookVerifier.verifySignatureWithTimestamp(
 | Method | Description |
 |:-------|:------------|
 | `saveConfiguration()` | Konfigürasyon Kaydet |
+| `getConfiguration()` | Konfigürasyon Getir |
 ### UnitResource
 
 | Method | Description |

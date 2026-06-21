@@ -20,3 +20,4 @@ export * from './cancel-payment-response';
 export * from './error-response';
 export * from './api-error';
 export * from './validation-error';
+export * from './configuration-response';
