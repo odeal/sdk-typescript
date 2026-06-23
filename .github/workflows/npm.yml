@@ -150,10 +150,12 @@ jobs:
 
 # PROVENANCE
 
-    - name: Generate provenance
-      uses: actions/attest-build-provenance@v4
-      with:
-        subject-path: ${{ env.PKG }}
+    # !!! Provenance sadece public ve enterprise Github hesaplarında kulanılabiliyor.
+    # !!! Repolar public oluncaya kadar bu adım kapalı tutulacak.
+    # - name: Generate provenance
+    #   uses: actions/attest-build-provenance@v4
+    #   with:
+    #     subject-path: ${{ env.PKG }}
 
 # ARTIFACT UPLOAD
 
