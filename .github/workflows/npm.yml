@@ -89,7 +89,7 @@ jobs:
 
     - name: Generate SBOM
       run: |
-        syft dir:. -o cyclonedx-json > artifacts/sbom.json
+        syft dir:. -o cyclonedx-json=artifacts/sbom.json
         
 # SBOM ATTESTATION
 
