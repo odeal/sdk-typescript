@@ -19,6 +19,7 @@ export * from './basket-list-result';
 export * from './basket-response';
 export * from './basket-list-response';
 export * from './cancel-payment-request';
+export * from './cancel-payment-result';
 export * from './cancel-payment-response';
 export * from './error-response';
 export * from './api-error';

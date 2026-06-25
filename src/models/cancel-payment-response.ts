@@ -1,11 +1,12 @@
 
+import { CancelPaymentResult, withCancelPaymentResultMetadata } from './cancel-payment-result';
 
 /**
  * Ödeme iptal yanıtı.
  */
 export interface CancelPaymentResponse {
-    /**  */
-    result?: any;
+    /** Ödeme iptal sonucu. */
+    result?: CancelPaymentResult;
 }
 
 export function createCancelPaymentResponse(partial: Partial<CancelPaymentResponse> = {}): CancelPaymentResponse & { __configMap?: Record<string, string>; __validationRules?: Record<string, unknown> } {
@@ -18,6 +19,9 @@ export function createCancelPaymentResponse(partial: Partial<CancelPaymentRespon
 
 export function withCancelPaymentResponseMetadata<T extends CancelPaymentResponse>(obj: T): T & { __configMap?: Record<string, string>; __validationRules?: Record<string, unknown> } {
     const result = obj as any;
+    if (result.result) {
+        result.result = withCancelPaymentResultMetadata(result.result);
+    }
     
     return result;
 }
