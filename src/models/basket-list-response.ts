@@ -1,11 +1,12 @@
 
+import { BasketListResult, withBasketListResultMetadata } from './basket-list-result';
 
 /**
  * 
  */
 export interface BasketListResponse {
-    /**  */
-    result?: any;
+    /** Sepet listeleme sonucu. */
+    result?: BasketListResult;
 }
 
 export function createBasketListResponse(partial: Partial<BasketListResponse> = {}): BasketListResponse & { __configMap?: Record<string, string>; __validationRules?: Record<string, unknown> } {
@@ -18,6 +19,9 @@ export function createBasketListResponse(partial: Partial<BasketListResponse> = 
 
 export function withBasketListResponseMetadata<T extends BasketListResponse>(obj: T): T & { __configMap?: Record<string, string>; __validationRules?: Record<string, unknown> } {
     const result = obj as any;
+    if (result.result) {
+        result.result = withBasketListResultMetadata(result.result);
+    }
     
     return result;
 }
