@@ -1,6 +1,6 @@
 {
   "name": "@odeal/sdk",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Odeal Entegrasyon SDK (Otomatik Üretildi)",
   "author": "Odeal",
   "license": "MIT",
@@ -25,6 +25,7 @@
     "build": "tsup src/index.ts --format esm,cjs --dts --clean",
     "build:watch": "tsup src/index.ts --format esm,cjs --dts --watch",
     "clean": "rm -rf dist",
+    "prepare": "npm run build",
     "prepublishOnly": "npm run build"
   },
   "keywords": [
