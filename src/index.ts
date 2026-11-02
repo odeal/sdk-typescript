@@ -2,11 +2,11 @@
 // Auto-generated - Do not modify manually
 
 // Config & Exceptions
-export { OdealConfig, defaultConfig, validateConfig } from './odeal-config';
+export { OdealConfig, defaultConfig, validateConfig, getEffectiveBaseUrl } from './odeal-config';
 export { OdealConfigBuilder } from './odeal-config-builder';
-export { OdealEnvironment } from './odeal-environment';
+export { OdealEnvironment, getEnvironmentBaseUrl, parseEnvironment } from './odeal-environment';
 export { OdealDefaults } from './odeal-defaults';
-export { OdealApiException, OdealValidationException } from './exceptions';
+export { OdealApiException, OdealValidationException, OdealRedirectException } from './exceptions';
 
 // Client & Factory
 export { OdealClient } from './odeal-client';
@@ -18,6 +18,7 @@ export type { OdealInterceptor, RequestContext, ResponseContext } from './interc
 // Utilities
 export { OdealHealthCheck } from './odeal-health-check';
 export { OdealWebhookVerifier } from './webhook-verifier';
+export { OdealAllowances } from './odeal-allowances';
 export { MultipartBody } from './multipart-body';
 export { sanitizeJson, sanitizeHeaders } from './sanitizer';
 export { OdealCircuitBreaker, CircuitState, OdealCircuitOpenException } from './circuit-breaker';

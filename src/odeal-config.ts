@@ -9,7 +9,7 @@
  * import { OdealConfig } from '@odeal/sdk';
  * 
  * const config: OdealConfig = {
- *   baseUrl: 'https://api.odeal.com/v1',
+ *   baseUrl: 'https://api.sandbox.odeal.com/integration/api/v1', // test ortamı
  *   secretKey: 'your-secret-key',
  *   merchantKey: 'your-merchant-key',
  * };
@@ -17,6 +17,7 @@
  */
 
 import type { OdealInterceptor } from './interceptor';
+import { OdealEnvironment, getEnvironmentBaseUrl, parseEnvironment } from './odeal-environment';
 
 /**
  * Structured Logger interface. Winston, Pino vb. kurumsal loglayıcılar ile uyumludur.
@@ -71,10 +72,17 @@ export class ConsoleOdealLogger implements OdealLogger {
  */
 export interface OdealConfig {
     /**
-     * API base URL'i.
-     * @default 'https://api.odeal.com/v1'
+     * Açık API taban adresi. Verilmezse (ya da boşsa) `environment` ortamının adresi kullanılır; varsayılan
+     * production: https://api.odeal.com/api/v1. `sandboxMode` açıkken yok sayılır (davranış sözleşmesi §12).
      */
-    baseUrl: string;
+    baseUrl?: string;
+
+    /**
+     * Ortam. `baseUrl` verilmemişse isteklerin gittiği adresi belirler. Ad olarak "staging", "sandbox", "prod" gibi
+     * takma adlar da kabul edilir; bilinmeyen ad hata verir.
+     * @default OdealEnvironment.Production
+     */
+    environment?: OdealEnvironment;
 
     /**
      * API gizli anahtarı. Tüm isteklerde kimlik doğrulama için kullanılır.
@@ -135,6 +143,13 @@ export interface OdealConfig {
   circuitBreakerResetMs?: number;
 
   /**
+   * POST/PUT/PATCH isteklerine `X-Odeal-Idempotency-Key` başlığı eklenir mi. Ödeal API'si bu başlığı henüz
+   * kullanmıyor; sepetin benzersiz anahtarı `basketReferenceCode`'dur (sözleşme §3).
+   * @default false
+   */
+  enableIdempotencyKey?: boolean;
+
+  /**
    * Structured Logger instance'ı (Winston, Pino vb. kurumsal loglayıcılar için).
    * Belirtilmezse ConsoleOdealLogger kullanılır.
    * 
@@ -155,7 +170,8 @@ export interface OdealConfig {
   interceptors?: OdealInterceptor[];
 
   /**
-   * Sandbox (test) modu. True olduğunda baseUrl değerine bakılmaksızın staging ortamı kullanılır.
+   * Sandbox (test) modu. Açıkken istekler baseUrl ve environment'tan bağımsız olarak test ortamına gider
+   * (davranış sözleşmesi §12). Çağrı başına verilen adres bundan da önceliklidir (§11).
    * Production'a geçmeden önce test yapmak için kullanışlıdır.
    * @default false
    */
@@ -166,7 +182,6 @@ export interface OdealConfig {
  * Varsayılan konfigürasyon değerleri.
  */
 export const defaultConfig: OdealConfig = {
-  baseUrl: 'https://api.odeal.com/v1',
   secretKey: '',
   merchantKey: '',
   skipClientValidation: false,
@@ -174,17 +189,24 @@ export const defaultConfig: OdealConfig = {
   timeout: 30000,
   maxRetryCount: 3,
   maskSensitiveData: true,
-  sandboxMode: false
+  sandboxMode: false,
+  enableIdempotencyKey: false
 };
 
 /**
- * Efektif base URL — sandboxMode aktifse staging, değilse baseUrl döner.
+ * İsteklerin gönderildiği taban adres (davranış sözleşmesi §12): sandboxMode açıksa test ortamı; değilse açık
+ * baseUrl; o da yoksa environment ortamının adresi (varsayılan production).
+ * @throws Error environment tanınmayan bir değerse
  */
-export function getEffectiveBaseUrl(config: OdealConfig): string {
+export function getEffectiveBaseUrl(config: Partial<OdealConfig>): string {
   if (config.sandboxMode) {
-    return 'https://stage.odealapp.com/api/v1';
+    return getEnvironmentBaseUrl(OdealEnvironment.Staging);
   }
-  return config.baseUrl;
+  if (config.baseUrl) {
+    return config.baseUrl;
+  }
+  return getEnvironmentBaseUrl(
+    config.environment == null ? OdealEnvironment.Production : parseEnvironment(String(config.environment)));
 }
 
 /**
@@ -196,8 +218,10 @@ export function getEffectiveBaseUrl(config: OdealConfig): string {
 export function validateConfig(config: Partial<OdealConfig>): { valid: boolean; errors: string[] } {
     const errors: string[] = [];
 
-    if (!config.baseUrl) {
-        errors.push('baseUrl zorunludur.');
+    try {
+        getEffectiveBaseUrl(config);
+    } catch (e) {
+        errors.push(e instanceof Error ? e.message : String(e));
     }
 
     if (!config.secretKey) {
@@ -231,7 +255,8 @@ export function maskSecret(secret?: string): string {
  * ```
  */
 export function configToString(config: OdealConfig): string {
-    return `OdealConfig{baseUrl=${config.baseUrl}, secretKey=${maskSecret(config.secretKey)}, ` +
+    return `OdealConfig{baseUrl=${config.baseUrl ?? ''}, environment=${config.environment ?? OdealEnvironment.Production}, ` +
+        `sandboxMode=${config.sandboxMode ?? false}, secretKey=${maskSecret(config.secretKey)}, ` +
         `merchantKey=${maskSecret(config.merchantKey)}, debugMode=${config.debugMode ?? false}, ` +
         `timeout=${config.timeout ?? 30000}ms, maxRetry=${config.maxRetryCount ?? 3}}`;
 }

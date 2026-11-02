@@ -30,6 +30,10 @@ export enum PaymentOptionType {
      * FOODCARD - API değeri: FOOD_CARD
      */
     FOODCARD = 'FOOD_CARD',
+    /**
+     * MONEYTRANSFER - API değeri: MONEY_TRANSFER
+     */
+    MONEYTRANSFER = 'MONEY_TRANSFER',
 }
 
 /**
@@ -41,6 +45,7 @@ export const PaymentOptionTypeValues = {
     GIFT: 'GIFT',
     OPENACCOUNT: 'OPEN_ACCOUNT',
     FOODCARD: 'FOOD_CARD',
+    MONEYTRANSFER: 'MONEY_TRANSFER',
 } as const;
 
 /**

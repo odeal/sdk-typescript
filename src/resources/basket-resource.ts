@@ -96,7 +96,8 @@ export class BasketResource extends BaseResource {
             bodyWithMetadata,
             Object.keys(queryParams).length > 0 ? queryParams : undefined,
             Object.keys(headerParams).length > 0 ? headerParams : undefined,
-            baseUrl
+            baseUrl,
+            'object'
         );
     }
 
@@ -159,7 +160,8 @@ export class BasketResource extends BaseResource {
             bodyWithMetadata,
             Object.keys(queryParams).length > 0 ? queryParams : undefined,
             Object.keys(headerParams).length > 0 ? headerParams : undefined,
-            baseUrl
+            baseUrl,
+            'object'
         );
     }
 
@@ -222,7 +224,8 @@ export class BasketResource extends BaseResource {
             bodyWithMetadata,
             Object.keys(queryParams).length > 0 ? queryParams : undefined,
             Object.keys(headerParams).length > 0 ? headerParams : undefined,
-            baseUrl
+            baseUrl,
+            'object'
         );
     }
 
@@ -285,7 +288,8 @@ export class BasketResource extends BaseResource {
             bodyWithMetadata,
             Object.keys(queryParams).length > 0 ? queryParams : undefined,
             Object.keys(headerParams).length > 0 ? headerParams : undefined,
-            baseUrl
+            baseUrl,
+            'object'
         );
     }
 
@@ -357,7 +361,8 @@ export class BasketResource extends BaseResource {
             undefined,
             Object.keys(queryParams).length > 0 ? queryParams : undefined,
             Object.keys(headerParams).length > 0 ? headerParams : undefined,
-            baseUrl
+            baseUrl,
+            'object'
         );
     }
 
@@ -422,7 +427,8 @@ export class BasketResource extends BaseResource {
             undefined,
             Object.keys(queryParams).length > 0 ? queryParams : undefined,
             Object.keys(headerParams).length > 0 ? headerParams : undefined,
-            baseUrl
+            baseUrl,
+            undefined
         );
     }
 
@@ -481,7 +487,8 @@ export class BasketResource extends BaseResource {
             undefined,
             Object.keys(queryParams).length > 0 ? queryParams : undefined,
             Object.keys(headerParams).length > 0 ? headerParams : undefined,
-            baseUrl
+            baseUrl,
+            undefined
         );
     }
 }

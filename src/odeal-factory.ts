@@ -19,7 +19,7 @@
  */
 
 import type { OdealConfig } from './odeal-config';
-import { OdealEnvironment, getEnvironmentBaseUrl } from './odeal-environment';
+import { parseEnvironment } from './odeal-environment';
 
 /**
  * OdealClient'ı varsayılan değerlerle oluşturur.
@@ -30,7 +30,6 @@ import { OdealEnvironment, getEnvironmentBaseUrl } from './odeal-environment';
 export function createOdealClient(config: Partial<OdealConfig> & Pick<OdealConfig, 'secretKey' | 'merchantKey'>) {
     // Dynamic import to avoid circular dependency
     const fullConfig: OdealConfig = {
-        baseUrl: 'https://api.odeal.com/v1',
         timeout: 30000,
         maxRetryCount: 3,
         debugMode: false,
@@ -53,8 +52,8 @@ export function createOdealClient(config: Partial<OdealConfig> & Pick<OdealConfi
  * - ODEAL_SECRET_KEY
  * - ODEAL_MERCHANT_KEY
  * - ODEAL_BASE_URL (opsiyonel)
- * - ODEAL_ENVIRONMENT (opsiyonel — "staging" veya "production")
- * - ODEAL_SANDBOX (opsiyonel — "true"/"false")
+ * - ODEAL_ENVIRONMENT (opsiyonel — production, prod, staging, stage, sandbox; başka değer hata)
+ * - ODEAL_SANDBOX (opsiyonel — true/false/1/0; başka değer hata)
  * - ODEAL_DEBUG (opsiyonel, "true"/"false")
  * 
  * @param overrides - Env üzerini yazmak için opsiyonel config
@@ -71,24 +70,42 @@ export function createOdealClientFromEnv(overrides: Partial<OdealConfig> = {}) {
         );
     }
 
-    // Ortam belirleme (öncelik: ODEAL_BASE_URL > ODEAL_SANDBOX > ODEAL_ENVIRONMENT > default)
-    let baseUrl: string = 'https://api.odeal.com/v1';
+    // Ortam ve adres. Öncelik getEffectiveBaseUrl'de (sözleşme §12): ODEAL_SANDBOX açık > ODEAL_BASE_URL >
+    // ODEAL_ENVIRONMENT > production. Bilinmeyen değer hata verir; sessizce production'a düşülmez.
+    const fromEnv: Partial<OdealConfig> = { sandboxMode: parseFlag('ODEAL_SANDBOX', process.env.ODEAL_SANDBOX) };
     const envStr = process.env.ODEAL_ENVIRONMENT;
-    if (envStr === 'production' || envStr === 'prod') {
-        baseUrl = getEnvironmentBaseUrl(OdealEnvironment.Production);
+    if (envStr && envStr.trim()) {
+        try {
+            fromEnv.environment = parseEnvironment(envStr);
+        } catch (e) {
+            throw new Error(`ODEAL_ENVIRONMENT geçersiz: ${e instanceof Error ? e.message : String(e)}`);
+        }
     }
-    if (process.env.ODEAL_BASE_URL) {
-        baseUrl = process.env.ODEAL_BASE_URL;
-    }
-    if (process.env.ODEAL_SANDBOX === 'true') {
-        baseUrl = getEnvironmentBaseUrl(OdealEnvironment.Staging);
+    const baseUrl = process.env.ODEAL_BASE_URL;
+    if (baseUrl && baseUrl.trim()) {
+        fromEnv.baseUrl = baseUrl.trim();
     }
 
     return createOdealClient({
         secretKey,
         merchantKey,
-        baseUrl,
+        ...fromEnv,
         debugMode: process.env.ODEAL_DEBUG === 'true',
         ...overrides,
     });
+}
+
+/** "true"/"1" açık; "false"/"0"/boş kapalı; başka değer hata (sessizce production'a düşülmez). */
+function parseFlag(name: string, value: string | undefined): boolean {
+    switch ((value ?? '').trim().toLowerCase()) {
+        case '':
+        case 'false':
+        case '0':
+            return false;
+        case 'true':
+        case '1':
+            return true;
+        default:
+            throw new Error(`${name} geçersiz: '${value}'. Geçerli değerler: true, false, 1, 0.`);
+    }
 }

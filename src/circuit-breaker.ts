@@ -21,6 +21,7 @@ export class OdealCircuitBreaker {
     private failureCount = 0;
     private lastFailureTime = 0;
     private halfOpenProbeInFlight = false;
+    private probeStartedAt = 0;
     private readonly failureThreshold: number;
     private readonly resetTimeoutMs: number;
 
@@ -50,8 +51,10 @@ export class OdealCircuitBreaker {
 
         if (this.state === CircuitState.Closed) return true;
         if (this.state === CircuitState.HalfOpen) {
-            if (this.halfOpenProbeInFlight) return false;
+            // Önceki deneme sonuçsuz kaldıysa (iptal, doğrulama ya da kanca hatası) izin sıfırlama süresi dolunca yeniden verilir (RT-02).
+            if (this.halfOpenProbeInFlight && Date.now() - this.probeStartedAt < this.resetTimeoutMs) return false;
             this.halfOpenProbeInFlight = true; // probe izni bu isteğe verildi
+            this.probeStartedAt = Date.now();
             return true;
         }
         return false; // Open

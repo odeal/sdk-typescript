@@ -6,7 +6,7 @@
  * const config = new OdealConfigBuilder()
  *   .secretKey('sk_xxx')
  *   .merchantKey('mk_xxx')
- *   .baseUrl('https://api.odeal.com/v1')
+ *   .environment(OdealEnvironment.Staging)
  *   .debugMode(true)
  *   .timeout(60000)
  *   .maxRetryCount(5)
@@ -17,11 +17,10 @@
 
 import type { OdealConfig } from './odeal-config';
 import type { OdealInterceptor } from './interceptor';
-import { OdealEnvironment, getEnvironmentBaseUrl } from './odeal-environment';
+import type { OdealEnvironment } from './odeal-environment';
 
 export class OdealConfigBuilder {
     private config: Partial<OdealConfig> = {
-        baseUrl: 'https://api.odeal.com/v1',
         timeout: 30000,
         maxRetryCount: 3,
         debugMode: false,
@@ -33,16 +32,18 @@ export class OdealConfigBuilder {
     secretKey(secretKey: string): this { this.config.secretKey = secretKey; return this; }
     merchantKey(merchantKey: string): this { this.config.merchantKey = merchantKey; return this; }
     baseUrl(baseUrl: string): this { this.config.baseUrl = baseUrl; return this; }
-    /** Ortam preset'i (Staging veya Production). BaseUrl'i otomatik ayarlar. */
-    environment(env: OdealEnvironment): this { this.config.baseUrl = getEnvironmentBaseUrl(env); return this; }
-    /** Sandbox (test) modu. Aktifken her zaman staging ortamı kullanılır. */
-    sandboxMode(sandbox: boolean = true): this { if (sandbox) this.config.baseUrl = getEnvironmentBaseUrl(OdealEnvironment.Staging); return this; }
+    /** Ortam (Staging veya Production). Açık baseUrl verilmişse adres o olur; çağrı sırası önemsizdir (§12). */
+    environment(env: OdealEnvironment): this { this.config.environment = env; return this; }
+    /** Sandbox (test) modu. Açıkken istekler her zaman test ortamına gider (§12). */
+    sandboxMode(sandbox: boolean = true): this { this.config.sandboxMode = sandbox; return this; }
     externalDeviceKey(key: string): this { this.config.externalDeviceKey = key; return this; }
     skipClientValidation(skip: boolean = true): this { this.config.skipClientValidation = skip; return this; }
     debugMode(debug: boolean = true): this { this.config.debugMode = debug; return this; }
     timeout(timeoutMs: number): this { this.config.timeout = timeoutMs; return this; }
     maxRetryCount(count: number): this { this.config.maxRetryCount = count; return this; }
     maskSensitiveData(mask: boolean = true): this { this.config.maskSensitiveData = mask; return this; }
+    /** POST/PUT/PATCH isteklerine idempotency başlığı ekler (varsayılan kapalı; sözleşme §3). */
+    enableIdempotencyKey(enable: boolean = true): this { this.config.enableIdempotencyKey = enable; return this; }
     
     addInterceptor(interceptor: OdealInterceptor): this {
         if (!this.config.interceptors) this.config.interceptors = [];

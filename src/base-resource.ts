@@ -9,12 +9,13 @@
  * Tüm header'lar swagger.json'dan parse edilip Resource sınıflarında otomatik oluşturulur.
  */
 
-import { OdealConfig, OdealLogger, ConsoleOdealLogger, defaultConfig } from './odeal-config';
+import { OdealConfig, OdealLogger, ConsoleOdealLogger, defaultConfig, getEffectiveBaseUrl } from './odeal-config';
 import { MultipartBody } from './multipart-body';
 import {
     OdealApiException, OdealValidationException,
     OdealAuthenticationException, OdealForbiddenException,
     OdealNotFoundException, OdealRateLimitException,
+    OdealRedirectException,
 } from './exceptions';
 import { sanitizeJson } from './sanitizer';
 
@@ -52,7 +53,7 @@ export abstract class BaseResource {
   
     protected readonly log: OdealLogger;
     
-  private readonly AGENT = "OdealSdkTypeScriptClient/0.1.6";
+  private readonly AGENT = "OdealSdkTypeScriptClient/0.2.0";
   
     private readonly circuitBreaker?: OdealCircuitBreaker;
     
@@ -189,6 +190,24 @@ export abstract class BaseResource {
     }
 
     /**
+     * Yanıt gövdesinin log biçimi (sözleşme §8, SEC-08): hata ayıklama modu kapalıyken gövde loglanmaz, yalnız
+     * uzunluğu yazılır; açıkken hassas veri maskeleme açıksa maskelenerek yazılır.
+     */
+    protected bodyForLog(text: string | undefined | null, limit?: number): string {
+        const raw = text ?? '';
+        if (!this.config.debugMode) {
+            return `(gövde loglanmadı, uzunluk ${raw.length})`;
+        }
+        let shown = raw;
+        
+                if (this.config.maskSensitiveData) {
+                    shown = sanitizeJson(raw) ?? raw;
+                }
+                
+        return limit !== undefined && shown.length > limit ? `${shown.substring(0, limit)}...` : shown;
+    }
+
+    /**
      * Body'den internal property'leri temizler (__configMap, __validationRules vb.)
      *
      * @param obj - Temizlenecek obje
@@ -204,6 +223,81 @@ export abstract class BaseResource {
             return (data as { result: T }).result;
         }
         return data as T;
+    }
+
+    /**
+     * Başarılı (2xx) yanıtın biçimini doğrular (davranış sözleşmesi §8, NEW-10). Resource metotları sendRequest'e
+     * beklenen biçimi verir; unwrapList geriye uyumluluk için duruyor ve biçim denetimi yapmaz.
+     * 'list' / 'list-any': {"result":[...]} (ek alanlar serbest) ya da doğrudan dizi; boş gövde, JSON null, {} ve
+     * {"result":null} boş liste (şemada result zorunlu değil); 'list' için elemanlar JSON nesnesi olmalı.
+     * 'object': JSON nesnesi; boş gövde ve JSON null undefined. Uyumsuzlukta OdealApiException: durum kodu yanıtın HTTP
+     * kodu, gövde istisnada tutulur, iletiye yazılmaz; tekrar denenmez.
+     */
+    private checkResponseShape<T>(expect: 'list' | 'list-any' | 'object', status: number, text: string,
+                                  empty: boolean, parsed: boolean, data: unknown): T {
+        const isList = expect !== 'object';
+        if (empty) {
+            return (isList ? [] : undefined) as T;
+        }
+        const error = (detail: string) =>
+            new OdealApiException(`Beklenmeyen yanıt biçimi (HTTP ${status}): ${detail}.`, status, text);
+        if (!parsed) {
+            throw error('yanıt geçerli JSON değil');
+        }
+        if (expect === 'object') {
+            if (data === null) {
+                return undefined as T;
+            }
+            if (typeof data !== 'object' || Array.isArray(data)) {
+                throw error(`nesne bekleniyordu; ${BaseResource.jsonKind(data)} geldi`);
+            }
+            return data as T;
+        }
+
+        let items: unknown[];
+        if (data === null) {
+            return [] as T;
+        } else if (Array.isArray(data)) {
+            items = data;
+        } else if (typeof data === 'object') {
+            const obj = data as Record<string, unknown>;
+            if ('result' in obj) {
+                const result = obj.result;
+                if (result === null) {
+                    return [] as T;
+                }
+                if (!Array.isArray(result)) {
+                    throw error(`liste bekleniyordu; 'result' alanı ${BaseResource.jsonKind(result)}`);
+                }
+                items = result;
+            } else if (Object.keys(obj).length === 0) {
+                return [] as T;
+            } else {
+                throw error(`liste bekleniyordu; 'result' alanı yok`);
+            }
+        } else {
+            throw error(`liste bekleniyordu; ${BaseResource.jsonKind(data)} geldi`);
+        }
+        if (expect === 'list') {
+            items.forEach((item, index) => {
+                if (item === null || typeof item !== 'object' || Array.isArray(item)) {
+                    throw error(`liste elemanı nesne değil (${index}: ${BaseResource.jsonKind(item)})`);
+                }
+            });
+        }
+        return items as T;
+    }
+
+    private static jsonKind(value: unknown): string {
+        if (value === null) return 'null';
+        if (Array.isArray(value)) return 'dizi';
+        switch (typeof value) {
+            case 'object': return 'nesne';
+            case 'string': return 'metin';
+            case 'number': return 'sayı';
+            case 'boolean': return 'mantıksal';
+            default: return typeof value;
+        }
     }
 
     private cleanBody(obj: unknown): unknown {
@@ -291,7 +385,8 @@ export abstract class BaseResource {
         body?: unknown,
         queryParams?: Record<string, string>,
         headerParams?: Record<string, string>,
-        overrideBaseUrl?: string
+        overrideBaseUrl?: string,
+        expect?: 'list' | 'list-any' | 'object'
     ): Promise<T> {
         // 1. Config defaults doldur (eğer body bir object ise)
         if (body && typeof body === 'object') {
@@ -321,8 +416,9 @@ export abstract class BaseResource {
             }
         }
 
-        // 3. URL oluştur
-        const baseUrl = (overrideBaseUrl || this.config.baseUrl).replace(/\/$/, '');
+        // 3. URL oluştur. Çağrı başına adres önceliklidir; yoksa yapılandırmanın etkin adresi: sandboxMode, açık
+        // baseUrl, environment (sözleşme §11, §12; C25, C26).
+        const baseUrl = (overrideBaseUrl || getEffectiveBaseUrl(this.config)).replace(/\/$/, '');
         let url = `${baseUrl}${path.startsWith('/') ? path : '/' + path}`;
 
         // Query params ekle
@@ -364,8 +460,8 @@ export abstract class BaseResource {
         }
 
         
-                // Idempotency Key: POST/PUT/PATCH isteklerinde çift işlem koruması
-                if (['POST', 'PUT', 'PATCH'].includes(method.toUpperCase())) {
+                // Idempotency Key: yalnız enableIdempotencyKey açıksa (varsayılan kapalı, sözleşme §3), POST/PUT/PATCH'te.
+                if (this.config.enableIdempotencyKey && ['POST', 'PUT', 'PATCH'].includes(method.toUpperCase())) {
                     const headerName = 'X-Odeal-Idempotency-Key';
                     if (!headers[headerName]) {
                         headers[headerName] = typeof crypto !== 'undefined' && crypto.randomUUID
@@ -391,8 +487,10 @@ export abstract class BaseResource {
         }
 
         // 6. Native fetch with Retry Logic
+        // Retry politikası (davranış sözleşmesi §1): yalnız GET yeniden denenir. GET dışındaki yöntemlerde
+        // (HEAD ve OPTIONS dahil) SDK isteği tekrar göndermez; sunucu ilk isteği işlemiş olabilir.
         let currentTry = 0;
-        const maxRetries = this.config.maxRetryCount ?? 0;
+        const maxRetries = method.toUpperCase() === 'GET' ? (this.config.maxRetryCount ?? 0) : 0;
 
         
                 // Circuit Breaker Guard
@@ -402,138 +500,54 @@ export abstract class BaseResource {
                 
 
         while (true) {
+            
+                        // Interceptor: onBeforeRequest. Kanca hatası olduğu gibi yayılır; ağ hatası sayılmaz, tekrar denenmez (sözleşme §10).
+                        if (this.config.interceptors?.length) {
+                            const reqCtx = {
+                                method: method.toUpperCase(),
+                                url,
+                                headers: { ...headers },
+                                body: requestBody,
+                                metadata: {}
+                            };
+                            for (const interceptor of this.config.interceptors) {
+                                await interceptor.onBeforeRequest?.(reqCtx);
+                            }
+                        }
+                        
+
+            const startTime = Date.now();
+
+            // Timeout with AbortController
+            const controller = new AbortController();
+            const timeoutMs = this.config.timeout ?? 30000;
+            const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+            const fetchOptions: RequestInit = {
+                method: method.toUpperCase(),
+                headers,
+                signal: controller.signal,
+                // Yönlendirme izlenmez (davranış sözleşmesi §1.1); 3xx aşağıda hataya dönüşür.
+                // 'error' seçilmedi: o durumda fetch ağ hatası fırlatır ve istek ağ hatası gibi tekrar denenirdi.
+                redirect: 'manual',
+            };
+            if (requestBody !== undefined && requestBody !== null) {
+                fetchOptions.body = requestBody instanceof FormData
+                    ? requestBody
+                    : (typeof requestBody === 'string' ? requestBody : JSON.stringify(requestBody));
+            }
+
+            // Ağ katmanı: yalnız istek gönderimi ve gövde okuma. Buradaki hata transport hatasıdır (zaman aşımı dahil)
+            // ve yalnız GET'te tekrar denenir. Kancalar ve yanıt işleme bu bloğun dışındadır.
+            let fetchResponse!: Awaited<ReturnType<typeof fetch>>;
+            let responseText!: string;
             try {
-                
-                                // Interceptor: onBeforeRequest
-                                if (this.config.interceptors?.length) {
-                                    const reqCtx = {
-                                        method: method.toUpperCase(),
-                                        url,
-                                        headers: { ...headers },
-                                        body: requestBody,
-                                        metadata: {}
-                                    };
-                                    for (const interceptor of this.config.interceptors) {
-                                        await interceptor.onBeforeRequest?.(reqCtx);
-                                    }
-                                }
-                                
-
-                const startTime = Date.now();
-
-                // Timeout with AbortController
-                const controller = new AbortController();
-                const timeoutMs = this.config.timeout ?? 30000;
-                const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-                const fetchOptions: RequestInit = {
-                    method: method.toUpperCase(),
-                    headers,
-                    signal: controller.signal,
-                };
-                if (requestBody !== undefined && requestBody !== null) {
-                    fetchOptions.body = requestBody instanceof FormData
-                        ? requestBody
-                        : (typeof requestBody === 'string' ? requestBody : JSON.stringify(requestBody));
-                }
-
-                const fetchResponse = await fetch(url, fetchOptions);
-                clearTimeout(timeoutId);
-
-                // Parse response body
-                const responseText = await fetchResponse.text();
-                let responseData: unknown;
-                try {
-                    responseData = JSON.parse(responseText);
-                } catch {
-                    responseData = responseText;
-                }
-
-                // Normalize response
-                const response = {
-                    status: fetchResponse.status,
-                    statusText: fetchResponse.statusText,
-                    data: responseData,
-                    headers: Object.fromEntries(fetchResponse.headers.entries()) as Record<string, string>,
-                };
-
-                const durationMs = Date.now() - startTime;
-
-                
-                                // Interceptor: onAfterResponse
-                                if (this.config.interceptors?.length) {
-                                    const respCtx = {
-                                        statusCode: response.status,
-                                        headers: response.headers,
-                                        body: response.data,
-                                        durationMs,
-                                        request: { method: method.toUpperCase(), url, headers: { ...headers }, metadata: {} },
-                                        metadata: {}
-                                    };
-                                    for (const interceptor of this.config.interceptors) {
-                                        await interceptor.onAfterResponse?.(respCtx);
-                                    }
-                                }
-                                
-
-                if (response.status >= 500 || response.status === 429) {
-                    
-                                        this.circuitBreaker?.recordFailure();
-                                        
-                    if (currentTry < maxRetries) {
-                        currentTry++;
-                        const delayStr = response.headers['retry-after'];
-                        const delay = delayStr ? parseInt(delayStr, 10) * 1000 : Math.pow(2, currentTry) * 500;
-                        this.debugLog(`Request failed with ${response.status}. Retrying in ${delay}ms. Attempt ${currentTry} of ${maxRetries}.`, 'warn');
-                        await new Promise(resolve => setTimeout(resolve, delay));
-                        continue;
-                    }
-                }
-
-                
-                                // Devre-kıran: yalnızca 5xx/429 OLMAYAN yanıtlar başarı sayılır. 5xx/429 retry
-                                // tükenmişse yukarıda recordFailure yapıldı; burada recordSuccess çağırıp sayacı
-                                // sıfırlamamalıyız (aksi halde devre HTTP hatalarında asla açılmaz).
-                                if (response.status < 500 && response.status !== 429) {
-                                    this.circuitBreaker?.recordSuccess();
-                                }
-                                
-
-                const respText = typeof responseData === 'string'
-                    ? responseData 
-                    : JSON.stringify(responseData);
-
-                if (response.status >= 400) {
-                    this.debugLog(`HTTP Error ${response.status}: ${respText}`, 'error');
-                    // Zengin hata hiyerarşisi: status → spesifik exception tipi
-                    switch (response.status) {
-                        case 401: throw new OdealAuthenticationException(undefined, respText);
-                        case 403: throw new OdealForbiddenException(undefined, respText);
-                        case 404: throw new OdealNotFoundException(undefined, respText);
-                        case 429: throw new OdealRateLimitException(undefined, respText);
-                        default: throw new OdealApiException(`API Error: ${response.status}`, response.status, respText);
-                    }
-                }
-
-                // Boş yanıt kontrolü
-                if (response.status === 204 || !responseData) {
-                    this.debugLog(`Response [${response.status}]: (empty)`);
-                    return undefined as T;
-                }
-
-                this.debugLog(`Response [${response.status}]: ${respText.substring(0, 500)}${respText.length > 500 ? '...' : ''}`);
-                return responseData as T;
-
+                fetchResponse = await fetch(url, fetchOptions);
+                responseText = await fetchResponse.text();
             } catch (error) {
-                if (error instanceof OdealApiException || error instanceof OdealValidationException) {
-                    throw error;
-                }
-
                 
                                 this.circuitBreaker?.recordFailure();
                                 
-
-                // Network/Timeout error → retry
                 if (currentTry < maxRetries) {
                     currentTry++;
                     const delay = Math.pow(2, currentTry) * 500;
@@ -541,13 +555,114 @@ export abstract class BaseResource {
                     await new Promise(resolve => setTimeout(resolve, delay));
                     continue;
                 }
-                
                 this.debugLog(`Network Error: ${error}`, 'error');
                 throw new OdealApiException(
                     `Network hatası: ${error instanceof Error ? error.message : String(error)}`,
                     0
                 );
+            } finally {
+                clearTimeout(timeoutId);
             }
+
+            // Parse response body
+            let responseData: unknown;
+            let parsedJson = true;
+            try {
+                responseData = JSON.parse(responseText);
+            } catch {
+                responseData = responseText;
+                parsedJson = false;
+            }
+
+            // Normalize response
+            const response = {
+                status: fetchResponse.status,
+                statusText: fetchResponse.statusText,
+                data: responseData,
+                headers: Object.fromEntries(fetchResponse.headers.entries()) as Record<string, string>,
+            };
+
+            const durationMs = Date.now() - startTime;
+            const isRetryableFailure = response.status >= 500 || response.status === 429;
+
+            
+                        // Devre-kıran kaydı kancadan önce yapılır (sözleşme §6): 5xx/429 başarısızlık, diğer yanıtlar (2xx/3xx/4xx,
+                        // tarayıcı opaqueredirect dahil) "sunucu yanıt verdi". Kanca hata fırlatsa da kayıt yapılmış olur.
+                        if (isRetryableFailure) {
+                            this.circuitBreaker?.recordFailure();
+                        } else {
+                            this.circuitBreaker?.recordSuccess();
+                        }
+                        
+
+            
+                        // Interceptor: onAfterResponse. Kanca hatası olduğu gibi yayılır; istek tekrar gönderilmez (sözleşme §10).
+                        if (this.config.interceptors?.length) {
+                            const respCtx = {
+                                statusCode: response.status,
+                                headers: response.headers,
+                                body: response.data,
+                                durationMs,
+                                request: { method: method.toUpperCase(), url, headers: { ...headers }, metadata: {} },
+                                metadata: {}
+                            };
+                            for (const interceptor of this.config.interceptors) {
+                                await interceptor.onAfterResponse?.(respCtx);
+                            }
+                        }
+                        
+
+            if (isRetryableFailure && currentTry < maxRetries) {
+                currentTry++;
+                const delayStr = response.headers['retry-after'];
+                const delay = delayStr ? parseInt(delayStr, 10) * 1000 : Math.pow(2, currentTry) * 500;
+                this.debugLog(`Request failed with ${response.status}. Retrying in ${delay}ms. Attempt ${currentTry} of ${maxRetries}.`, 'warn');
+                await new Promise(resolve => setTimeout(resolve, delay));
+                continue;
+            }
+
+            const respText = typeof responseData === 'string'
+                ? responseData
+                : JSON.stringify(responseData);
+
+            // 3xx (Node) ya da opaqueredirect (tarayıcı; durum kodu görünmez, 0 gelir) → yönlendirme hatası, retry yok.
+            if (fetchResponse.type === 'opaqueredirect' || (response.status >= 300 && response.status < 400)) {
+                this.debugLog(`Redirect not followed: ${response.status}`, 'error');
+                throw new OdealRedirectException(
+                    fetchResponse.type === 'opaqueredirect'
+                        ? 'İstek yönlendirildi (tarayıcı durum kodunu göstermiyor). SDK yönlendirme izlemez; baseUrl\'yi kontrol edin.'
+                        : `Sunucu yönlendirme döndürdü (HTTP ${response.status}). SDK yönlendirme izlemez; baseUrl'yi kontrol edin.`,
+                    response.status,
+                    respText,
+                );
+            }
+
+            if (response.status >= 400) {
+                this.debugLog(`HTTP Error ${response.status}: ${this.bodyForLog(respText)}`, 'error');
+                // Zengin hata hiyerarşisi: status → spesifik exception tipi
+                switch (response.status) {
+                    case 401: throw new OdealAuthenticationException(undefined, respText);
+                    case 403: throw new OdealForbiddenException(undefined, respText);
+                    case 404: throw new OdealNotFoundException(undefined, respText);
+                    case 429: throw new OdealRateLimitException(undefined, respText);
+                    default: throw new OdealApiException(`API Error: ${response.status}`, response.status, respText);
+                }
+            }
+
+            // Yanıt biçimi (sözleşme §8): beklenen biçim verildiyse doğrulanır; liste için {"result":[...]} sarmalı açılır.
+            if (expect) {
+                const empty = response.status === 204 || responseText.trim() === '';
+                return this.checkResponseShape<T>(expect, response.status, responseText, empty, parsedJson, responseData);
+            }
+
+            // Boş yanıt kontrolü
+            if (response.status === 204 || !responseData) {
+                this.debugLog(`Response [${response.status}]: (empty)`);
+                return undefined as T;
+            }
+
+            this.debugLog(`Response [${response.status}]: ${this.bodyForLog(respText, 500)}`);
+            return responseData as T;
         }
     }
 

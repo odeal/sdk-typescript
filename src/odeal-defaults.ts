@@ -18,6 +18,7 @@ export const OdealDefaults = {
   HTTP_TOO_MANY_REQUESTS: 429,
 
   isServerError: (statusCode: number): boolean => statusCode >= 500,
+  /** Retry yapılabilir durum kodu (5xx veya 429). SDK yalnız GET isteklerini yeniden dener. */
   isRetryable: (statusCode: number): boolean =>
     statusCode >= 500 || statusCode === 429,
 } as const;

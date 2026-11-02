@@ -113,6 +113,17 @@ export class OdealRateLimitException extends OdealApiException {
     }
 }
 
+/**
+ * Yönlendirme hatası. SDK yönlendirme izlemez; 3xx yanıtı bu hataya dönüşür ve istek tekrar gönderilmez.
+ * `statusCode` sunucunun döndürdüğü 3xx kodudur. Tarayıcıda `fetch` kodu göstermez (`opaqueredirect`); o zaman 0'dır.
+ */
+export class OdealRedirectException extends OdealApiException {
+    constructor(message: string, statusCode: number, responseBody?: string) {
+        super(message, statusCode, responseBody);
+        this.name = 'OdealRedirectException';
+    }
+}
+
 // ─── Validation Exception ────────────────────────────────────
 
 /**

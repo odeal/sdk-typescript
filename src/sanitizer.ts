@@ -11,11 +11,21 @@ const SENSITIVE_FIELDS = [
     'tckn', 'tcKimlikNo', 'tcKimlik', 'identityNumber', 'nationalId',
     'iban', 'phone', 'phoneNumber', 'telephone', 'gsm',
     'email', 'eMail', 'mail', 'address', 'adres',
+    'gsmNumber', 'basicAuthPassword', 'odealRequestKey', 'merchantKey', 'externalDeviceKey', 'taxNumber', 'apiKey',
 ];
+
+/** Adında bu parçalardan biri geçen her alan da maskelenir (büyük/küçük harf duyarsız; ör. basicAuthPassword). */
+const SENSITIVE_FIELD_PARTS = ['password', 'secret', 'token'];
 
 const SENSITIVE_HEADER_KEYWORDS = ['secret', 'key', 'authorization', 'token', 'cookie', 'session'];
 
 const SENSITIVE_FIELD_SET = new Set(SENSITIVE_FIELDS.map(f => f.toLowerCase()));
+
+/** Alan adı hassas mı: listede varsa ya da adında password/secret/token geçiyorsa. */
+function isSensitiveField(name: string): boolean {
+    const lower = name.toLowerCase();
+    return SENSITIVE_FIELD_SET.has(lower) || SENSITIVE_FIELD_PARTS.some(p => lower.includes(p));
+}
 
 /**
  * JSON string içindeki hassas alanları maskeler.
@@ -43,7 +53,7 @@ function maskValue(value: unknown): unknown {
     if (value !== null && typeof value === 'object') {
         const out: Record<string, unknown> = {};
         for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-            out[k] = SENSITIVE_FIELD_SET.has(k.toLowerCase()) ? '***' : maskValue(v);
+            out[k] = isSensitiveField(k) ? '***' : maskValue(v);
         }
         return out;
     }
@@ -59,7 +69,8 @@ function sanitizeJsonRegex(json: string): string {
         const pattern = new RegExp(`("${escapeRegex(field)}"\\s*:\\s*")[^"]*"`, 'gi');
         result = result.replace(pattern, '$1***"');
     }
-    return result;
+    // Adında password/secret/token geçen alanlar (ör. "basicAuthPassword").
+    return result.replace(/("[^"]*(?:password|secret|token)[^"]*"\s*:\s*")[^"]*"/gi, '$1***"');
 }
 
 /**

@@ -5,11 +5,12 @@ Bu paket Odeal SDK Generator tarafından üretilmiştir.
 ## Güvenlik açığı bildirimi
 
 Güvenlik açıklarını herkese açık issue olarak **açmayın**. Lütfen **security@odeal.com**
-adresine bildirin. İlk yanıt 3 iş günü içinde verilir.
+adresine bildirin.
 
-## Tedarik zinciri
+## Kurulum kaynağı
 
-Bu paket Sigstore (cosign) ile imzalanır ve CycloneDX SBOM + zafiyet attestation'ı ile
-yayınlanır. İmza/SBOM doğrulama talimatları için generator deposunun `SECURITY.md` dosyasına bakın.
+Bu SDK henüz public paket depolarında (nuget.org, npmjs.com, PyPI, Packagist, Maven Central) yok; bu GitHub
+deposundan, kaynak koddan kurulur. Kurulumda sürüm etiketini sabitleyin (README → Versioning). Yayınlanmış
+bir etiket değiştirilmez.
 
-Sürüm: 0.1.6
+Sürüm: 0.2.0

@@ -10,6 +10,7 @@
  */
 
 import type { OdealConfig } from './odeal-config';
+import { getEffectiveBaseUrl } from './odeal-config';
 
 export interface HealthCheckResult {
     /** API erişilebilir mi? */
@@ -32,16 +33,17 @@ export class OdealHealthCheck {
     }
 
     /**
-     * API'ye basit bir GET isteği göndererek bağlantıyı test eder.
+     * Kimlik doğrulaması istemeyen `GET /healthcheck` ucuyla bağlantıyı test eder; anahtar gönderilmez.
      */
     async ping(): Promise<HealthCheckResult> {
         const start = Date.now();
+        let baseUrl = '';
         try {
-            const response = await fetch(`${this.config.baseUrl}/health`, {
+            baseUrl = getEffectiveBaseUrl(this.config);
+            const response = await fetch(`${baseUrl}/healthcheck`, {
                 method: 'GET',
-                headers: {
-                    'X-ODEAL-SECRET-KEY': this.config.secretKey,
-                },
+                // Yönlendirme izlenmez; 3xx sağlıksız sayılır.
+                redirect: 'manual',
                 signal: AbortSignal.timeout(10000),
             });
             const latencyMs = Date.now() - start;
@@ -50,7 +52,7 @@ export class OdealHealthCheck {
                 isHealthy: response.ok,
                 statusCode: response.status,
                 latencyMs,
-                baseUrl: this.config.baseUrl,
+                baseUrl,
             };
         } catch (error) {
             const latencyMs = Date.now() - start;
@@ -58,7 +60,7 @@ export class OdealHealthCheck {
                 isHealthy: false,
                 statusCode: 0,
                 latencyMs,
-                baseUrl: this.config.baseUrl,
+                baseUrl,
                 errorMessage: error instanceof Error ? error.message : String(error),
             };
         }

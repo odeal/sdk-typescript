@@ -12,6 +12,7 @@ import { PaymentResource } from './resources/payment-resource';
 import { ConfigurationResource } from './resources/configuration-resource';
 import { UnitResource } from './resources/unit-resource';
 import { ReportResource } from './resources/report-resource';
+import { ProfileResource } from './resources/profile-resource';
 import {
     BasketRequest,
     BasketResponse,
@@ -25,6 +26,8 @@ import {
     ConfigurationResponse,
     Unit,
     TransactionReport,
+    ProfileDetailsResponse,
+    ProfileUpdateRequest,
 } from './models';
 
 /**
@@ -37,6 +40,7 @@ export class OdealClient {
     private readonly _configuration: ConfigurationResource;
     private readonly _unit: UnitResource;
     private readonly _report: ReportResource;
+    private readonly _profile: ProfileResource;
 
     constructor(config: Partial<OdealConfig> = {}) {
         this.config = { ...defaultConfig, ...config };
@@ -45,6 +49,7 @@ export class OdealClient {
         this._configuration = new ConfigurationResource(this.config);
         this._unit = new UnitResource(this.config);
         this._report = new ReportResource(this.config);
+        this._profile = new ProfileResource(this.config);
     }
 
     /**
@@ -87,6 +92,13 @@ export class OdealClient {
      */
     get report(): ReportResource {
         return this._report;
+    }
+
+    /**
+     * Profile resource'una erişim sağlar.
+     */
+    get profile(): ProfileResource {
+        return this._profile;
     }
 
     // ───────────────────────────────────────────────────────────────────────────
@@ -275,5 +287,36 @@ export class OdealClient {
         baseUrl?: string,
     ): Promise<TransactionReport[]> {
         return this._report.getTransactionReport(beginDate, endDate, externalDeviceKey, basketReferenceCode, options, baseUrl);
+    }
+
+    // ───────────────────────────────────────────────────────────────────────────
+    // PROFILE
+    // ───────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Kayıtlı terminal entegrasyon profil bilgilerinizi (profil tipi, IP listesi, terminal ID vb.) getirir.
+     */
+    async getProfileDetails(
+        options?: {
+            secretKey?: string;
+            merchantKey?: string;
+        },
+        baseUrl?: string,
+    ): Promise<ProfileDetailsResponse> {
+        return this._profile.getProfileDetails(options, baseUrl);
+    }
+
+    /**
+     * Terminal entegrasyon profil tipini günceller. Profil tipi, hangi sepet akışının kabul edileceğini belirler.
+     */
+    async updateProfile(
+        request: ProfileUpdateRequest,
+        options?: {
+            secretKey?: string;
+            merchantKey?: string;
+        },
+        baseUrl?: string,
+    ): Promise<void> {
+        return this._profile.updateProfile(request, options, baseUrl);
     }
 }

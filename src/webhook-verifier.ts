@@ -1,103 +1,73 @@
 /**
- * Odeal Webhook İmza Doğrulama Modülü
- * 
+ * Ödeal geri bildirim (webhook) isteklerini doğrulama yardımcıları.
+ *
+ * Ödeal, yapılandırmanızda tanımlıysa isteğe `X-ODEAL-REQUEST-KEY` başlığını (`odealRequestKey` değeri) koyar;
+ * Ödeal entegrasyon ekibiyle Basic Auth da tanımlanabilir (entegrasyon dokümanı, "Geri Bildirim"). Doğrulama
+ * isteğe bağlıdır: yapılandırmanıza uyan yöntemi kullanın. Karşılaştırmalar sabit zamanlıdır.
+ *
  * @example
  * ```typescript
  * import { OdealWebhookVerifier } from '@odeal/sdk';
- * 
- * // Express.js
- * app.post('/webhook', (req, res) => {
- *   const signature = req.headers['x-odeal-signature'] as string;
- *   const isValid = OdealWebhookVerifier.verifySignature(
- *     JSON.stringify(req.body),
- *     signature,
- *     'your-webhook-secret'
- *   );
- *   if (!isValid) return res.status(401).send('Invalid signature');
- *   // Webhook'u işle...
+ *
+ * // Express.js (Node başlık adlarını küçük harfe çevirir)
+ * app.post('/webhooks/odeal/payment-succeeded', (req, res) => {
+ *   const key = req.headers[OdealWebhookVerifier.REQUEST_KEY_HEADER];
+ *   if (!OdealWebhookVerifier.verifyRequestKey(key, 'your-odeal-request-key')) {
+ *     return res.status(401).end();
+ *   }
+ *   res.status(200).end(); // 2xx ile hızlı yanıt verin, ağır işi sonra yapın
  * });
  * ```
  */
 
-import { createHmac, timingSafeEqual } from 'crypto';
+import { createHash, timingSafeEqual } from 'crypto';
+
+/** Başlık değeri: Node `req.headers` tek değer, dizi ya da `undefined` verebilir. */
+export type OdealHeaderValue = string | string[] | null | undefined;
 
 export class OdealWebhookVerifier {
-    /** Varsayılan imza header adı. */
-    static readonly SIGNATURE_HEADER = 'x-odeal-signature';
-    /** Varsayılan timestamp header adı. */
-    static readonly TIMESTAMP_HEADER = 'x-odeal-timestamp';
-    /** Varsayılan tolerans (5 dakika, milisaniye). */
-    static readonly DEFAULT_TOLERANCE_MS = 5 * 60 * 1000;
+    /** Ödeal'in istek anahtarını taşıyan başlık (Node'daki küçük harfli adı). */
+    static readonly REQUEST_KEY_HEADER = 'x-odeal-request-key';
+
+    /** Basic Auth bilgisini taşıyan başlık (Node'daki küçük harfli adı). */
+    static readonly AUTHORIZATION_HEADER = 'authorization';
 
     /**
-     * Webhook imzasını doğrular.
+     * `X-ODEAL-REQUEST-KEY` başlığının değeri yapılandırmadaki `odealRequestKey` ile aynı mı.
+     * Başlık ya da beklenen anahtar boşsa, başlık birden çok kez geldiyse `false` döner.
      */
-    static verifySignature(payload: string, signature: string, webhookSecret: string): boolean {
-        if (!payload || !signature || !webhookSecret) return false;
-
-        const expected = OdealWebhookVerifier.computeSignature(payload, webhookSecret);
-        try {
-            return timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
-        } catch {
-            return false; // Farklı uzunluklar
-        }
+    static verifyRequestKey(receivedKey: OdealHeaderValue, expectedKey: string | null | undefined): boolean {
+        const received = single(receivedKey);
+        if (!received || !expectedKey) return false;
+        return fixedTimeEquals(Buffer.from(received, 'utf8'), Buffer.from(expectedKey, 'utf8'));
     }
 
     /**
-     * Birden fazla secret ile doğrulama (secret rotation desteği).
-     * Herhangi bir secret eşleşirse true döner.
+     * `Authorization: Basic ...` başlığı verilen kullanıcı adı ve parolayla eşleşiyor mu.
+     * Başlık yoksa, Basic değilse, base64 geçersizse ya da beklenen bilgiler boşsa `false` döner.
      */
-    static verifySignatureMulti(payload: string, signature: string, webhookSecrets: string[]): boolean {
-        if (!payload || !signature || !webhookSecrets?.length) return false;
-        return webhookSecrets.some(secret => 
-            secret && OdealWebhookVerifier.verifySignature(payload, signature, secret)
-        );
-    }
-
-    /**
-     * Webhook imzasını timestamp kontrolü ile doğrular (replay attack koruması).
-     */
-    static verifySignatureWithTimestamp(
-        payload: string,
-        signature: string,
-        timestamp: string,
-        webhookSecret: string,
-        toleranceMs: number = OdealWebhookVerifier.DEFAULT_TOLERANCE_MS
+    static verifyBasicAuth(
+        authorizationHeader: OdealHeaderValue,
+        username: string | null | undefined,
+        password: string | null | undefined,
     ): boolean {
-        const epochSeconds = parseInt(timestamp, 10);
-        if (isNaN(epochSeconds)) return false;
-
-        const diff = Math.abs(Date.now() - epochSeconds * 1000);
-        if (diff > toleranceMs) return false;
-
-        const signedPayload = `${timestamp}.${payload}`;
-        return OdealWebhookVerifier.verifySignature(signedPayload, signature, webhookSecret);
+        const header = single(authorizationHeader);
+        if (!header || !username || !password) return false;
+        const value = header.trim();
+        const space = value.indexOf(' ');
+        if (space <= 0 || value.slice(0, space).toLowerCase() !== 'basic') return false;
+        const encoded = value.slice(space + 1).trim();
+        if (!/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)) return false;
+        return fixedTimeEquals(Buffer.from(encoded, 'base64'), Buffer.from(`${username}:${password}`, 'utf8'));
     }
+}
 
-    /**
-     * Birden fazla secret + timestamp doğrulama (rotation + replay koruması).
-     */
-    static verifySignatureWithTimestampMulti(
-        payload: string,
-        signature: string,
-        timestamp: string,
-        webhookSecrets: string[],
-        toleranceMs: number = OdealWebhookVerifier.DEFAULT_TOLERANCE_MS
-    ): boolean {
-        const epochSeconds = parseInt(timestamp, 10);
-        if (isNaN(epochSeconds)) return false;
+function single(value: OdealHeaderValue): string | undefined {
+    if (Array.isArray(value)) return value.length === 1 ? value[0] : undefined;
+    return value ?? undefined;
+}
 
-        const diff = Math.abs(Date.now() - epochSeconds * 1000);
-        if (diff > toleranceMs) return false;
-
-        const signedPayload = `${timestamp}.${payload}`;
-        return OdealWebhookVerifier.verifySignatureMulti(signedPayload, signature, webhookSecrets);
-    }
-
-    /**
-     * HMAC-SHA256 imza hesaplar.
-     */
-    static computeSignature(payload: string, secret: string): string {
-        return createHmac('sha256', secret).update(payload, 'utf8').digest('hex');
-    }
+/** Uzunluk farkı da sızmasın diye iki değerin SHA-256 özeti sabit zamanlı karşılaştırılır. */
+function fixedTimeEquals(a: Buffer, b: Buffer): boolean {
+    return timingSafeEqual(createHash('sha256').update(a).digest(), createHash('sha256').update(b).digest());
 }
